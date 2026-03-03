@@ -1,1 +1,3 @@
-spring.application.name=seed-be
+spring:
+  profiles:
+    active: local
