@@ -1,0 +1,22 @@
+services:
+  seed-backend-local-server:
+    build: .
+    container_name: seed-backend-local-server
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+    depends_on:
+      seed-cache-server:
+        condition: service_healthy
+
+  seed-cache-server:
+    image: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      retries: 10
+
+
