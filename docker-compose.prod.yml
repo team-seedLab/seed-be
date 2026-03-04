@@ -1,12 +1,17 @@
 services:
-  seed-backend-local-server:
-    build: .
-    container_name: seed-backend-local-server
+  seed-backend-prod-server:
+    image: ghcr.io/${GITHUB_REPOSITORY}/seed-backend-prod-server:latest
+    container_name: seed-backend-prod-server
+    restart: always
     ports:
       - "8080:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_PROFILES_ACTIVE=prod
       - SPRING_DATA_REDIS_HOST=seed-cache-server
+    deploy:
+      resources:
+        limits:
+          memory: 3G
     depends_on:
       seed-cache-server:
         condition: service_healthy
@@ -14,10 +19,15 @@ services:
   seed-cache-server:
     image: redis
     container_name: seed-cache-server
+    restart: always
     ports:
       - "6379:6379"
     volumes:
       - ./redis/data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
