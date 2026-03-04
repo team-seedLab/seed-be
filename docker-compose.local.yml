@@ -12,6 +12,7 @@ services:
 
   seed-cache-server:
     image: redis
+    container_name: seed-cache-server
     ports:
       - "6379:6379"
     healthcheck:
