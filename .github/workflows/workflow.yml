@@ -56,7 +56,6 @@ jobs:
 
       - name: 도커 컴포즈 실행
         run: |
-          cd ~/seed
-          docker compose -f docker-compose.prod.yml pull
-          docker compose -f docker-compose.prod.yml up -d
+          docker compose -f /home/junsik/seed/docker-compose.prod.yml pull
+          docker compose -f /home/junsik/seed/docker-compose.prod.yml up -d
           docker image prune -f
