@@ -11,7 +11,7 @@ services:
       seed-cache-server:
         condition: service_healthy
 
-  seed-cache-server:
+  seed-cache-local-server:
     image: redis
     container_name: seed-cache-local-server
     ports:

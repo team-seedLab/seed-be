@@ -16,7 +16,7 @@ services:
       seed-cache-server:
         condition: service_healthy
 
-  seed-cache-server:
+  seed-cache-prod-server:
     image: redis
     container_name: seed-cache-prod-server
     restart: always

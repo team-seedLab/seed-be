@@ -41,8 +41,8 @@ jobs:
       - name: 도커 이미지 생성 및 푸시
         run: |
           REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          docker build -t ghcr.io/$REPO/seed-server:latest .
-          docker push ghcr.io/$REPO/seed-server:latest
+          docker build -t ghcr.io/$REPO/seed-backend-prod-server:latest .
+          docker push ghcr.io/$REPO/seed-backend-prod-server:latest
 
   deploy:
     needs: build-and-push
@@ -53,6 +53,7 @@ jobs:
 
       - name: 도커 컴포즈 실행
         run: |
+          cd ~/seed
           docker compose -f docker-compose.prod.yml pull
           docker compose -f docker-compose.prod.yml up -d
           docker image prune -f
