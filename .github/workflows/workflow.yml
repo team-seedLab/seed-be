@@ -41,7 +41,7 @@ jobs:
       - name: 도커 이미지 생성 및 푸시
         run: |
           REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          docker build -t ghcr.io/$REPO/seed-backend-prod-server:latest .
+          docker build --platform linux/arm64 -t ghcr.io/$REPO/seed-backend-prod-server:latest .
           docker push ghcr.io/$REPO/seed-backend-prod-server:latest
 
   deploy:
