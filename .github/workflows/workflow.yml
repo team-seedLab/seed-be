@@ -7,6 +7,10 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: 소스 코드 가져오기
         uses: actions/checkout@v4
