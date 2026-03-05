@@ -38,6 +38,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: QEMU 설치 (멀티 아키텍처 빌드용)
+        uses: docker/setup-qemu-action@v3
+
       - name: 도커 이미지 생성 및 푸시
         run: |
           REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
