@@ -7,7 +7,7 @@ services:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - SPRING_DATA_REDIS_HOST=seed-cache-server
+      - SPRING_DATA_REDIS_HOST=seed-cache-prod-server
     deploy:
       resources:
         limits:
@@ -18,7 +18,7 @@ services:
 
   seed-cache-server:
     image: redis
-    container_name: seed-cache-server
+    container_name: seed-cache-prod-server
     restart: always
     ports:
       - "6379:6379"

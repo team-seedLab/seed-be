@@ -6,14 +6,14 @@ services:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=local
-      - SPRING_DATA_REDIS_HOST=seed-cache-server
+      - SPRING_DATA_REDIS_HOST=seed-cache-local-server
     depends_on:
       seed-cache-server:
         condition: service_healthy
 
   seed-cache-server:
     image: redis
-    container_name: seed-cache-server
+    container_name: seed-cache-local-server
     ports:
       - "6379:6379"
     volumes:
