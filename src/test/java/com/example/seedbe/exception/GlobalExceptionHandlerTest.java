@@ -1,6 +1,5 @@
-package com.example.seedbe;
+package com.example.seedbe.exception;
 
-import com.example.seedbe.domain.test.TestController;
 import com.example.seedbe.global.exception.GlobalExceptionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;

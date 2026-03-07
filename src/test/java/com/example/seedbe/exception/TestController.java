@@ -1,4 +1,4 @@
-package com.example.seedbe.domain.test;
+package com.example.seedbe.exception;
 
 import com.example.seedbe.global.common.response.ApiResponse;
 import com.example.seedbe.global.exception.BusinessException;
