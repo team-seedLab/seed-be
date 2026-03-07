@@ -24,12 +24,12 @@ public class ApiResponse<T> {
     }
 
     // 비즈니스 로직 실패시 호출(예측 가능한 에러)
-    public static <T> ApiResponse<T> fail(T data, String errorCode, String errorMessage) {
-        return new ApiResponse<>(data, ApiStatus.FAIL, errorCode, errorMessage);
+    public static <T> ApiResponse<T> fail(String errorCode, String errorMessage) {
+        return new ApiResponse<>(null, ApiStatus.FAIL, errorCode, errorMessage);
     }
 
     // 서버 내부 에러(알 수 없는 에러)
-    public static <T> ApiResponse<T> error(T data, String status, String errorCode, String errorMessage, String serverDataTime) {
-        return new ApiResponse<>(data, ApiStatus.ERROR, errorCode, errorMessage);
+    public static <T> ApiResponse<T> error(String errorCode, String errorMessage) {
+        return new ApiResponse<>(null, ApiStatus.ERROR, errorCode, errorMessage);
     }
 }
