@@ -24,10 +24,12 @@ public class GlobalExceptionHandler {
     // 사용자 입력값 검증 예외 처리 (@Valid 실패 등)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
-        log.warn("ValidationException 발생 : {}", e.getMessage());
-
         // 첫 번째 유효성 검사 에러 메시지만 추출
-        String errorMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
+        String fieldName = e.getBindingResult().getFieldErrors().get(0).getField();
+        String errorMessage = e.getBindingResult().getFieldErrors().get(0).getDefaultMessage();
+
+        log.warn("ValidationException 발생 : [{}] {}", fieldName, errorMessage);
+
         ErrorType errorType = ErrorType.INVALID_INPUT_VALUE;
 
         ApiResponse<Void> response = ApiResponse.fail(errorType.getCode(), errorMessage);
