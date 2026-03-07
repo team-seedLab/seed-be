@@ -37,6 +37,7 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "https://www.seedlab.cloud",
+                "https://seedlab.cloud",
                 "https://api.seedlab.cloud"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
