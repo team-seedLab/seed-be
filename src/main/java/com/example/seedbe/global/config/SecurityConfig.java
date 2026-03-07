@@ -1,4 +1,4 @@
-package com.example.seedbe.config;
+package com.example.seedbe.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
