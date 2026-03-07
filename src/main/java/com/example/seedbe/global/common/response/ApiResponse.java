@@ -1,4 +1,4 @@
-package com.example.seedbe.global.common;
+package com.example.seedbe.global.common.response;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
