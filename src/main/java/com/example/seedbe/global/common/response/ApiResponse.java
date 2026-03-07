@@ -1,8 +1,11 @@
 package com.example.seedbe.global.common.response;
 
+import lombok.Getter;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+@Getter
 public class ApiResponse<T> {
     private final T data;
     private final ApiStatus status;
