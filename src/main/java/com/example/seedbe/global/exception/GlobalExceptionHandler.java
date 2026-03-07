@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
     // 사용자 입력값 검증 예외 처리 (@Valid 실패 등)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
-        // 첫 번째 유효성 검사 에러 메시지만 추출
+        // 유효성 검사 에러가 발생한 첫 번째 필드명과 원인만 추출 (입력값은 로그에 남기지 않음)
         String fieldName = e.getBindingResult().getFieldErrors().get(0).getField();
         String errorMessage = e.getBindingResult().getFieldErrors().get(0).getDefaultMessage();
 
@@ -40,7 +40,6 @@ public class GlobalExceptionHandler {
     // 처리하지 못한 모든 서버 내부 에러 (NullPointerException, DB 커넥션 끊김 등)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
-        // 알 수 없는 에러는 예외가 발생한 지점을 역으로 추적할 수 있도록 반드시 로그와 스택 트레이스를 남긴다
         log.error("Unhandled Exception 발생 : ", e);
 
         ErrorType errorType = ErrorType.INTERNAL_SERVER_ERROR;

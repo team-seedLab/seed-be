@@ -3,7 +3,8 @@ package com.example.seedbe.global.common.response;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
+import static com.example.seedbe.global.util.DateTimeUtil.GLOBAL_DATE_TIME_FORMATTER;
 
 @Getter
 public class ApiResponse<T> {
@@ -18,7 +19,7 @@ public class ApiResponse<T> {
         this.status = status;
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
-        this.serverDataTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        this.serverDataTime = LocalDateTime.now(ZoneOffset.UTC).format(GLOBAL_DATE_TIME_FORMATTER);
     }
 
     // 성공시 호출
