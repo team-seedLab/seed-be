@@ -60,12 +60,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             );
         } else if ("kakao".equals(registrationId)) {
             Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
-            Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
+            Map<String, Object> profile = kakaoAccount != null ? (Map<String, Object>) kakaoAccount.get("profile") : null;
             return new OAuth2UserInfo(
                     String.valueOf(attributes.get("id")),
-                    String.valueOf(kakaoAccount.get("email")),
-                    String.valueOf(profile.get("nickname")),
-                    String.valueOf(profile.get("profile_image_url"))
+                    kakaoAccount != null ? String.valueOf(kakaoAccount.get("email")) : null,
+                    profile != null ? String.valueOf(profile.get("nickname")) : null,
+                    profile != null ? String.valueOf(profile.get("profile_image_url")) : null
             );
         }
         throw new IllegalArgumentException("지원하지 않는 소셜 로그인입니다: " + registrationId);
