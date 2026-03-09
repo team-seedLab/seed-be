@@ -31,7 +31,6 @@ public class SecurityConfig {
         return (web) -> web.ignoring()
                 .requestMatchers(
                         "/favicon.ico",
-                        "/error",
                         "/.well-known/**"
                 );
     }
