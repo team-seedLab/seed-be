@@ -1,6 +1,7 @@
 package com.example.seedbe.global.security.oauth2;
 
 import com.example.seedbe.global.security.CustomUserDetails;
+import com.example.seedbe.global.security.jwt.JwtProperties;
 import com.example.seedbe.global.security.jwt.JwtProvider;
 import com.example.seedbe.global.util.CookieUtil;
 import jakarta.servlet.ServletException;
@@ -24,6 +25,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final JwtProvider jwtProvider;
     private final OAuth2Properties oAuth2Properties;
     private final Environment environment;
+    private final JwtProperties jwtProperties;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -43,7 +45,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         //  Environment를 써서 현재 활성화된 프로필 중 prod가 있는지 검사
         boolean isSecure = Arrays.asList(environment.getActiveProfiles()).contains("prod");
 
-        int cookieMaxAge = 60 * 60;
+        int cookieMaxAge = (int) (jwtProperties.accessTokenExpiration() / 1000);
         CookieUtil.addCookie(response, "accessToken", accessToken, cookieMaxAge, isSecure);
 
         // 동적 리다이렉트
