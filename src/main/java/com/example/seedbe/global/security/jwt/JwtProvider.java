@@ -9,6 +9,7 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import io.jsonwebtoken.security.SignatureException;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
@@ -70,14 +71,16 @@ public class JwtProvider {
         try {
             Jwts.parser().verifyWith(key).build().parseSignedClaims(token);
             return true;
-        } catch (SecurityException | MalformedJwtException e) {
-            log.error("잘못된 JWT 서명입니다.");
-        } catch (ExpiredJwtException e) {
-            log.error("만료된 JWT 토큰입니다.");
+        } catch (SignatureException e) {
+            log.error("잘못된 JWT 서명입니다.", e);
+        } catch (MalformedJwtException e){
+            log.error("유효하지 않은 JWT 토큰입니다.", e);
+        }catch (ExpiredJwtException e) {
+            log.error("만료된 JWT 토큰입니다.", e);
         } catch (UnsupportedJwtException e) {
-            log.error("지원되지 않는 JWT 토큰입니다.");
+            log.error("지원되지 않는 JWT 토큰입니다.", e);
         } catch (IllegalArgumentException e) {
-            log.error("JWT 토큰이 잘못되었습니다.");
+            log.error("JWT 토큰이 잘못되었습니다.", e);
         }
         return false;
     }
