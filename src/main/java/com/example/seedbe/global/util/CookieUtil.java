@@ -28,17 +28,8 @@ public class CookieUtil {
         response.addHeader("Set-Cookie", cookie.toString());
     }
 
-    public static void deleteCookie(HttpServletRequest request, HttpServletResponse response, String name, boolean isSecure, String path) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if (cookie.getName().equals(name)) {
-                    // 값을 비우고, maxAge를 0으로 주기
-                    ResponseCookie deleteCookie = generateCookie(name, "", 0, isSecure, path);
-                    response.addHeader("Set-Cookie", deleteCookie.toString());
-                    break;
-                }
-            }
-        }
+    public static void deleteCookie(HttpServletResponse response, String name, boolean isSecure, String path) {
+        ResponseCookie deleteCookie = generateCookie(name, "", 0, isSecure, path);
+        response.addHeader("Set-Cookie", deleteCookie.toString());
     }
 }

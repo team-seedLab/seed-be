@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -24,6 +25,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JwtProperties jwtProperties;
 
+    @Transactional
     public void reissueToken(String refreshToken, HttpServletResponse response, Boolean isSecure) {
         if (!jwtProvider.validateToken(refreshToken)) {
             throw new BusinessException(ErrorType.INVALID_TOKEN);
@@ -51,5 +53,12 @@ public class AuthService {
         int refreshCookieMaxAge = (int) (jwtProperties.refreshTokenExpiration() / 1000);
         CookieUtil.addCookie(response, "refreshToken", newRefreshToken, refreshCookieMaxAge, isSecure, "/api/auth");
 
+    }
+
+    @Transactional
+    public void logout(String userId) {
+        // Redis에 저장된 Refresh Token을 날려버림!
+        refreshTokenService.deleteRefreshToken(userId);
+        log.info("유저 ID: {} 로그아웃 완료 (Redis RT 삭제)", userId);
     }
 }
