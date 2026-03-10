@@ -31,17 +31,9 @@ public class SwaggerConfig {
         Server localServer = new Server().url("http://localhost:8080").description("Local Development Server (HTTP)");
         Server prodServer = new Server().url("https://api.seedlab.cloud").description("Production Server (HTTPS)");
 
-        SecurityScheme accessTokenAuth = new SecurityScheme()
-                .type(SecurityScheme.Type.APIKEY)
-                .in(SecurityScheme.In.COOKIE)
-                .name("accessToken");
-
-        SecurityRequirement securityRequirement = new SecurityRequirement().addList("AccessToken");
 
         return new OpenAPI()
                 .servers(List.of(localServer, prodServer))
-                .components(new Components().addSecuritySchemes("AccessToken", accessTokenAuth))
-                .addSecurityItem(securityRequirement)
                 .info(new Info()
                         .title("SEED API 명세서")
                         .description(socialLoginGuide)
