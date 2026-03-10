@@ -33,6 +33,8 @@ public class AuthController {
 
         boolean isSecure = Arrays.asList(environment.getActiveProfiles()).contains("prod");
 
+        authService.reissueToken(refreshToken, response, isSecure);
+
         return ApiResponse.success("토큰이 성공적으로 재발급 되었습니다.");
     }
 }

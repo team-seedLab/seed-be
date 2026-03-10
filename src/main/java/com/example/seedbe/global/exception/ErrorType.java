@@ -12,7 +12,10 @@ public enum ErrorType {
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "G002", "서버 내부 오류가 발생했습니다."),
 
     // [Auth] 인증/인가
-    INVALID_TOKEN(HttpStatus.NOT_FOUND, "T001", "토큰이 없습니다"),
+    INVALID_TOKEN(HttpStatus.BAD_REQUEST, "T001", "토큰이 없습니다"),
+
+    // [User] 유저
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "유저가 없습니다")
 
     // [Project] 과제 PDF 관련
     PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "해당 프로젝트를 찾을 수 없습니다."),
