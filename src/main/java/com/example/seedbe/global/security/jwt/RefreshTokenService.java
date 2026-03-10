@@ -1,7 +1,7 @@
 package com.example.seedbe.global.security.jwt;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
-    private final RedisTemplate<String, String> refreshTokenRedisTemplate;
+    private final StringRedisTemplate refreshTokenRedisTemplate;
     private final JwtProperties jwtProperties;
 
     private static final String REDIS_KEY_PREFIX = "RT:";
