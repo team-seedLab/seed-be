@@ -47,10 +47,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         boolean isSecure = Arrays.asList(environment.getActiveProfiles()).contains("prod");
 
         int accessCookieMaxAge = (int) (jwtProperties.accessTokenExpiration() / 1000);
-        CookieUtil.addCookie(response, "accessToken", accessToken, accessCookieMaxAge, isSecure);
+        CookieUtil.addCookie(response, "accessToken", accessToken, accessCookieMaxAge, isSecure, "/");
 
         int refreshCookieMaxAge = (int) (jwtProperties.refreshTokenExpiration() / 1000);
-        CookieUtil.addCookie(response, "refreshToken", refreshToken, refreshCookieMaxAge, isSecure);
+        CookieUtil.addCookie(response, "refreshToken", refreshToken, refreshCookieMaxAge, isSecure, "/api/auth");
 
         // 동적 리다이렉트
         getRedirectStrategy().sendRedirect(request, response, oAuth2Properties.redirectUri());

@@ -46,10 +46,10 @@ public class AuthService {
         log.info("유저 ID: {} 토큰 재발급(RTR) 완료", userId);
 
         int accessCookieMaxAge = (int) (jwtProperties.accessTokenExpiration() / 1000);
-        CookieUtil.addCookie(response, "accessToken", newAccessToken, accessCookieMaxAge, isSecure);
+        CookieUtil.addCookie(response, "accessToken", newAccessToken, accessCookieMaxAge, isSecure, "/");
 
         int refreshCookieMaxAge = (int) (jwtProperties.refreshTokenExpiration() / 1000);
-        CookieUtil.addCookie(response, "refreshToken", newRefreshToken, refreshCookieMaxAge, isSecure);
+        CookieUtil.addCookie(response, "refreshToken", newRefreshToken, refreshCookieMaxAge, isSecure, "/api/auth");
 
     }
 }
