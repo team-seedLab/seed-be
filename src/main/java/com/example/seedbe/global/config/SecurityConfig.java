@@ -1,5 +1,7 @@
 package com.example.seedbe.global.config;
 
+import com.example.seedbe.global.common.response.ApiResponse;
+import com.example.seedbe.global.exception.ErrorType;
 import com.example.seedbe.global.security.jwt.JwtAuthFilter;
 import com.example.seedbe.global.security.oauth2.CustomOAuth2UserService;
 import com.example.seedbe.global.security.oauth2.OAuth2SuccessHandler;
@@ -15,6 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
@@ -25,6 +28,7 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final JwtAuthFilter jwtAuthFilter;
+    private final ObjectMapper objectMapper;
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
@@ -43,6 +47,18 @@ public class SecurityConfig {
                 .httpBasic((auth) -> auth.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            ErrorType errorType = ErrorType.UNAUTHORIZED;
+
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.setStatus(errorType.getHttpStatus().value());
+
+                            ApiResponse<?> apiResponse = ApiResponse.fail(errorType.getCode(), errorType.getMessage());
+
+                            response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
+                        })
+                )
                 .oauth2Login(oauth2 -> oauth2
                         // 소셜 로그인 성공 후 유저 정보를 가져올 때의 설정
                         .userInfoEndpoint(userInfo -> userInfo
