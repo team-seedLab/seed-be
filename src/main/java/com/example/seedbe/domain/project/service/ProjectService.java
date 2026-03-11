@@ -32,6 +32,7 @@ public class ProjectService {
         return ProjectDetailResponse.from(project);
     }
 
+    @Transactional
     public ProjectDetailResponse createProject(UUID userId, ProjectCreateRequest projectCreateRequest) {
         Project project = Project.builder()
                 .userId(userId)
@@ -43,6 +44,12 @@ public class ProjectService {
 
         Project savedProject = projectRepository.save(project);
         return ProjectDetailResponse.from(savedProject);
+    }
+
+    @Transactional
+    public void deleteProject(UUID userId, UUID projectId) {
+        Project project = getProjectWithOwnershipCheck(userId, projectId);
+        projectRepository.delete(project);
     }
 
     private Project getProjectWithOwnershipCheck(UUID userId, UUID projectId) {

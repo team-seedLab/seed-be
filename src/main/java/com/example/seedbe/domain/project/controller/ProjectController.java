@@ -28,7 +28,7 @@ public class ProjectController {
     private final ProjectService projectService;
 
     @Operation(
-            summary = "내 프로젝트 목록 조회 (페이징) (로그인 필요)",
+            summary = "프로젝트 목록 조회 (페이징) (로그인 필요)",
             description = "로그인한 사용자의 프로젝트 목록을 최신순으로 페이징하여 조회합니다."
     )
     @GetMapping
@@ -45,7 +45,7 @@ public class ProjectController {
     }
 
     @Operation(
-            summary = "단일 프로젝트 상세 조회",
+            summary = "단일 프로젝트 상세 조회 (로그인 필요)",
             description = "프로젝트 ID로 특정 프로젝트의 상세 정보(initial_context 포함)를 조회합니다."
     )
     @GetMapping("{projectId}")
@@ -58,7 +58,7 @@ public class ProjectController {
     }
 
     @Operation(
-            summary = "프로젝트 생성",
+            summary = "프로젝트 생성 (로그인 필요)",
             description = "PDF 파싱 데이터와 입력값을 바탕으로 새 프로젝트를 생성합니다."
     )
     @PostMapping
@@ -68,5 +68,18 @@ public class ProjectController {
     ){
         ProjectDetailResponse response = projectService.createProject(user.getUser().getUserId(), projectCreateRequest);
         return ApiResponse.success(response);
+    }
+
+    @Operation(
+            summary = "프로젝트 삭제 (로그인 필요)",
+            description = "프로젝트 ID로 특정 프로젝트를 삭제합니다."
+    )
+    @DeleteMapping("/{projectId}")
+    public ApiResponse<Void> deleteProject(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable UUID projectId
+    ) {
+        projectService.deleteProject(user.getUser().getUserId(), projectId);
+        return ApiResponse.success(null);
     }
 }
