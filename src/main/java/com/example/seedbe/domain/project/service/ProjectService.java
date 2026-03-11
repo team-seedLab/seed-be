@@ -1,8 +1,10 @@
 package com.example.seedbe.domain.project.service;
 
+import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.entity.Project;
+import com.example.seedbe.domain.project.enums.ProjectStatus;
 import com.example.seedbe.domain.project.repository.ProjectRepository;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
@@ -28,6 +30,19 @@ public class ProjectService {
     public ProjectDetailResponse getProjectDetails(UUID userId, UUID projectId) {
         Project project = getProjectWithOwnershipCheck(userId, projectId);
         return ProjectDetailResponse.from(project);
+    }
+
+    public ProjectDetailResponse createProject(UUID userId, ProjectCreateRequest projectCreateRequest) {
+        Project project = Project.builder()
+                .userId(userId)
+                .title(projectCreateRequest.title())
+                .roadmapType(projectCreateRequest.roadmapType())
+                .initialContext(projectCreateRequest.initialContext())
+                .status(ProjectStatus.IN_PROGRESS)
+                .build();
+
+        Project savedProject = projectRepository.save(project);
+        return ProjectDetailResponse.from(savedProject);
     }
 
     private Project getProjectWithOwnershipCheck(UUID userId, UUID projectId) {
