@@ -12,13 +12,14 @@ public enum ErrorType {
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "G002", "서버 내부 오류가 발생했습니다."),
 
     // [Auth] 인증/인가
-    INVALID_TOKEN(HttpStatus.BAD_REQUEST, "A001", "유효하지 않은 토큰입니다."),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A001", "유효하지 않은 토큰입니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "A002", "로그인이 필요합니다."),
+    FORBIDDEN_ACCESS(HttpStatus.FORBIDDEN, "A003", "해당 리소스에 접근할 권한이 없습니다."),
 
     // [User] 유저
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "유저가 없습니다"),
 
-    // [Project] 과제 PDF 관련
+    // [Project] 과제 관련
     PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "해당 프로젝트를 찾을 수 없습니다."),
     PDF_PARSING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "P002", "PDF 과제 파일 파싱에 실패했습니다."),
 
