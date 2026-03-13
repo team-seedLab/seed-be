@@ -1,5 +1,6 @@
 package com.example.seedbe.domain.project.controller;
 
+import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.enums.RoadmapType;
@@ -8,12 +9,14 @@ import com.example.seedbe.global.common.response.ApiResponse;
 import com.example.seedbe.global.common.response.PageResponse;
 import com.example.seedbe.global.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -62,16 +65,12 @@ public class ProjectController {
             summary = "프로젝트 생성 (로그인 필요)",
             description = "PDF 파일과 유저 입력값을 받아 AI로 파싱한 후, 템플릿 변수로 DB에 즉시 저장합니다."
     )
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<ProjectDetailResponse> createProject(
             @AuthenticationPrincipal CustomUserDetails user,
-            @RequestPart(value = "title") String title,
-            @RequestPart(value = "roadmapType") RoadmapType roadmapType,
-            @RequestPart(value = "userIntent") String userIntent,
-            @RequestPart(value = "files") List<MultipartFile> files
-
+            @ModelAttribute ProjectCreateRequest projectCreateRequest
             ){
-        ProjectDetailResponse response = projectService.createProject(user.getUser().getUserId(), title, roadmapType, userIntent, files);
+        ProjectDetailResponse response = projectService.createProject(user.getUser().getUserId(), projectCreateRequest);
         return ApiResponse.success(response);
     }
 

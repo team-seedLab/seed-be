@@ -1,5 +1,6 @@
 package com.example.seedbe.domain.project.service;
 
+import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.entity.Project;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class ProjectService {
     private final ProjectRepository projectRepository;
     private final PdfService pdfService;
+    private final AIService aiService;
 
     public Page<ProjectListResponse> getProjects(UUID userId, Pageable pageable) {
         Page<Project> projectPage = projectRepository.findAllByUserId(userId, pageable);
@@ -36,19 +39,22 @@ public class ProjectService {
     }
 
     @Transactional
-    public ProjectDetailResponse createProject(UUID userId, String title, RoadmapType roadmapType, String userIntent, List<MultipartFile> files) {
-        String finalPdfText = pdfService.CombineTexts(files);
+    public ProjectDetailResponse createProject(UUID userId, ProjectCreateRequest projectCreateRequest) {
+        // pdf 텍스트화
+        String finalPdfText = pdfService.CombineTexts(projectCreateRequest.files());
 
-        if (finalPdfText.isEmpty() && userIntent == null) {
+        if (finalPdfText.isEmpty() && projectCreateRequest.userIntent() == null) {
             throw new BusinessException(ErrorType.NO_CONTENT_TO_ANALYZE);
         }
 
+        // ai를 활용한 프롬프트 변수추출
+        Map<String, Object> extractedVariables = aiService.analyzeToJSON(finalPdfText, projectCreateRequest.userIntent(), projectCreateRequest.roadmapType());
 
         Project project = Project.builder()
                 .userId(userId)
-                .title(title)
-                .roadmapType(roadmapType)
-                .initialContext(null)
+                .title(projectCreateRequest.title())
+                .roadmapType(projectCreateRequest.roadmapType())
+                .initialContext(extractedVariables)
                 .status(ProjectStatus.IN_PROGRESS)
                 .build();
 
