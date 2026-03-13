@@ -1,10 +1,10 @@
 package com.example.seedbe.domain.project.service;
 
-import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
+import com.example.seedbe.domain.project.enums.RoadmapType;
 import com.example.seedbe.domain.project.repository.ProjectRepository;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
@@ -13,7 +13,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -33,12 +35,12 @@ public class ProjectService {
     }
 
     @Transactional
-    public ProjectDetailResponse createProject(UUID userId, ProjectCreateRequest projectCreateRequest) {
+    public ProjectDetailResponse createProject(UUID userId, String title, RoadmapType roadmapType, String userIntent, List<MultipartFile> files) {
         Project project = Project.builder()
                 .userId(userId)
-                .title(projectCreateRequest.title())
-                .roadmapType(projectCreateRequest.roadmapType())
-                .initialContext(projectCreateRequest.initialContext())
+                .title(title)
+                .roadmapType(roadmapType)
+                .initialContext(null)
                 .status(ProjectStatus.IN_PROGRESS)
                 .build();
 

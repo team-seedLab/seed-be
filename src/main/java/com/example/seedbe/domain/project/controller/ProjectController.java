@@ -1,15 +1,14 @@
 package com.example.seedbe.domain.project.controller;
 
-import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
+import com.example.seedbe.domain.project.enums.RoadmapType;
 import com.example.seedbe.domain.project.service.ProjectService;
 import com.example.seedbe.global.common.response.ApiResponse;
 import com.example.seedbe.global.common.response.PageResponse;
 import com.example.seedbe.global.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -17,7 +16,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "Project Controller", description = "프로젝트 관련 API")
@@ -59,14 +60,18 @@ public class ProjectController {
 
     @Operation(
             summary = "프로젝트 생성 (로그인 필요)",
-            description = "PDF 파싱 데이터와 입력값을 바탕으로 새 프로젝트를 생성합니다."
+            description = "PDF 파일과 유저 입력값을 받아 AI로 파싱한 후, 템플릿 변수로 DB에 즉시 저장합니다."
     )
     @PostMapping
     public ApiResponse<ProjectDetailResponse> createProject(
             @AuthenticationPrincipal CustomUserDetails user,
-            @Valid @RequestBody ProjectCreateRequest projectCreateRequest
-    ){
-        ProjectDetailResponse response = projectService.createProject(user.getUser().getUserId(), projectCreateRequest);
+            @RequestPart(value = "title") String title,
+            @RequestPart(value = "roadmapType") RoadmapType roadmapType,
+            @RequestPart(value = "userIntent") String userIntent,
+            @RequestPart(value = "files") List<MultipartFile> files
+
+            ){
+        ProjectDetailResponse response = projectService.createProject(user.getUser().getUserId(), title, roadmapType, userIntent, files);
         return ApiResponse.success(response);
     }
 
