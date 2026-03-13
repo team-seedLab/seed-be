@@ -23,6 +23,7 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ProjectService {
     private final ProjectRepository projectRepository;
+    private final PdfService pdfService;
 
     public Page<ProjectListResponse> getProjects(UUID userId, Pageable pageable) {
         Page<Project> projectPage = projectRepository.findAllByUserId(userId, pageable);
@@ -36,6 +37,13 @@ public class ProjectService {
 
     @Transactional
     public ProjectDetailResponse createProject(UUID userId, String title, RoadmapType roadmapType, String userIntent, List<MultipartFile> files) {
+        String finalPdfText = pdfService.CombineTexts(files);
+
+        if (finalPdfText.isEmpty() && userIntent == null) {
+            throw new BusinessException(ErrorType.NO_CONTENT_TO_ANALYZE);
+        }
+
+
         Project project = Project.builder()
                 .userId(userId)
                 .title(title)

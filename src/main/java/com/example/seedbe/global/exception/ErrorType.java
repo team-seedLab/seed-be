@@ -22,6 +22,8 @@ public enum ErrorType {
     // [Project] 과제 관련
     PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "해당 프로젝트를 찾을 수 없습니다."),
     PDF_PARSING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "P002", "PDF 과제 파일 파싱에 실패했습니다."),
+    MAX_FILE_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "P003", "파일 개수가 초과되었습니다"),
+    NO_CONTENT_TO_ANALYZE(HttpStatus.NOT_FOUND, "P004", "분석할 과제가 없습니다"),
 
     // [AI Prompt] AI 프롬프트 네비게이션 관련
     PROMPT_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "A001", "단계별 프롬프트 생성에 실패했습니다."),
