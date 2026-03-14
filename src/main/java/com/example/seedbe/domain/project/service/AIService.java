@@ -91,7 +91,13 @@ public class AIService {
                     .body(String.class);
 
             JsonNode rootNode = objectMapper.readTree(response);
-            return rootNode.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+            JsonNode textNode = rootNode.at("/candidates/0/content/parts/0/text");
+            if (textNode.isMissingNode()) {
+                log.error("AI 응답에서 예상 경로의 텍스트를 찾을 수 없습니다. 원본 응답: {}", response);
+                throw new BusinessException(ErrorType.AI_RESPONSE_PARSE_ERROR);
+            }
+
+            return textNode.asText();
 
         } catch (Exception e) {
             log.error("Gemini API 통신 실패: {}", e.getMessage(), e); // e를 추가해서 스택트레이스 확인

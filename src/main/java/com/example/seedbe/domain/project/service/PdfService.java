@@ -17,7 +17,7 @@ import java.util.List;
 public class PdfService {
     private static final int MAX_FILE_COUNT = 3;
 
-    public String CombineTexts(List<MultipartFile> files) {
+    public String combineTexts(List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
             return "";
         }
