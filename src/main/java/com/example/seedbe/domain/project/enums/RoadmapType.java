@@ -11,8 +11,6 @@ import java.util.List;
 @Getter
 @RequiredArgsConstructor
 public enum RoadmapType {
-
-    // 각 로드맵 타입은 자신이 허용하는 단계(Step)들만 명시적으로 소유합니다.
     REPORT("리포트형", "report", Arrays.asList(
             RoadmapStep.CONSTRAINT_ANALYSIS,
             RoadmapStep.ARGUMENT_STRUCTURING,
@@ -24,6 +22,12 @@ public enum RoadmapType {
             RoadmapStep.DRAFTING,
             RoadmapStep.PAPER_REVISION,
             RoadmapStep.SUBMISSION
+    )),
+    PRESENTATION("발표형", "presentation", Arrays.asList(
+            RoadmapStep.MESSAGE_EXTRACTION,
+            RoadmapStep.STORYLINE,
+            RoadmapStep.SLIDE_DESIGN,
+            RoadmapStep.SCRIPT_GENERATION
     )),
     EXPERIMENT("실험/실습형", "experiment", Arrays.asList(
             RoadmapStep.CONCEPT_DEFINITION,
