@@ -29,8 +29,8 @@ public enum ErrorType {
     INVALID_ROADMAP_STEP(HttpStatus.BAD_REQUEST, "P007", "해당 로드맵 유형에서 지원하지 않는 단계입니다."),
 
     // [AI Prompt] AI 프롬프트 네비게이션 관련
-    PROMPT_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "A001", "단계별 프롬프트 생성에 실패했습니다."),
-    STEP_SEQUENCE_VIOLATION(HttpStatus.BAD_REQUEST, "A002", "이전 단계의 AI 결과를 먼저 입력해야 합니다.");
+    PROMPT_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "AP001", "단계별 프롬프트 생성에 실패했습니다."),
+    STEP_SEQUENCE_VIOLATION(HttpStatus.BAD_REQUEST, "AP002", "이전 단계의 AI 결과를 먼저 입력해야 합니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

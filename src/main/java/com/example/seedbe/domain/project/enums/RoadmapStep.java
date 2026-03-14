@@ -15,7 +15,7 @@ public enum RoadmapStep {
     // --- PAPER (논문형) ---
     PLANNING("planning", "연구 계획"),
     DRAFTING("drafting", "초고 작성"),
-    PAPER_REVISION("papar_revision", "교정 및 검토"), // 리포트형과 논문형 등에서 공통으로 사용 가능
+    PAPER_REVISION("paper_revision", "교정 및 검토"), // 리포트형과 논문형 등에서 공통으로 사용 가능
     SUBMISSION("submission", "투고 준비"),
 
     // --- PRESENTATION (발표형) ---
