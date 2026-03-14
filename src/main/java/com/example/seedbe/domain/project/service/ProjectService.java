@@ -5,7 +5,6 @@ import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
-import com.example.seedbe.domain.project.enums.RoadmapType;
 import com.example.seedbe.domain.project.repository.ProjectRepository;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
@@ -14,9 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -41,9 +38,9 @@ public class ProjectService {
     @Transactional
     public ProjectDetailResponse createProject(UUID userId, ProjectCreateRequest projectCreateRequest) {
         // pdf 텍스트화
-        String finalPdfText = pdfService.CombineTexts(projectCreateRequest.files());
+        String finalPdfText = pdfService.combineTexts(projectCreateRequest.files());
 
-        if (finalPdfText.isEmpty() && projectCreateRequest.userIntent() == null) {
+        if (finalPdfText.isEmpty() && projectCreateRequest.userIntent().isBlank()) {
             throw new BusinessException(ErrorType.NO_CONTENT_TO_ANALYZE);
         }
 

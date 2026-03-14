@@ -11,6 +11,7 @@ import com.example.seedbe.global.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -68,7 +69,7 @@ public class ProjectController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<ProjectDetailResponse> createProject(
             @AuthenticationPrincipal CustomUserDetails user,
-            @ModelAttribute ProjectCreateRequest projectCreateRequest
+            @Valid @ModelAttribute ProjectCreateRequest projectCreateRequest
             ){
         ProjectDetailResponse response = projectService.createProject(user.getUser().getUserId(), projectCreateRequest);
         return ApiResponse.success(response);
