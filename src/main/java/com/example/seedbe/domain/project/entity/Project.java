@@ -2,6 +2,7 @@ package com.example.seedbe.domain.project.entity;
 
 import com.example.seedbe.domain.project.enums.ProjectStatus;
 import com.example.seedbe.domain.project.enums.RoadmapType;
+import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -24,8 +25,9 @@ public class Project extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID projectId;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(name = "title", nullable = false)
     private String title;
@@ -44,8 +46,8 @@ public class Project extends BaseTimeEntity {
     private Map<String, Object> initialContext;
 
     @Builder
-    public Project(UUID userId, String title, RoadmapType roadmapType, ProjectStatus status, Map<String, Object> initialContext) {
-        this.userId = userId;
+    public Project(User user, String title, RoadmapType roadmapType, ProjectStatus status, Map<String, Object> initialContext) {
+        this.user = user;
         this.title = title;
         this.roadmapType = roadmapType;
         this.status = status;

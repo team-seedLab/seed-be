@@ -6,6 +6,7 @@ import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
 import com.example.seedbe.domain.project.repository.ProjectRepository;
+import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,7 @@ public class ProjectService {
     private final AIService aiService;
 
     public Page<ProjectListResponse> getProjects(UUID userId, Pageable pageable) {
-        Page<Project> projectPage = projectRepository.findAllByUserId(userId, pageable);
+        Page<Project> projectPage = projectRepository.findAllByUser_UserId(userId, pageable);
         return projectPage.map(ProjectListResponse::from);
     }
 
@@ -36,7 +37,7 @@ public class ProjectService {
     }
 
     @Transactional
-    public ProjectDetailResponse createProject(UUID userId, ProjectCreateRequest projectCreateRequest) {
+    public ProjectDetailResponse createProject(User user, ProjectCreateRequest projectCreateRequest) {
         // pdf 텍스트화
         String finalPdfText = pdfService.combineTexts(projectCreateRequest.files());
 
@@ -48,7 +49,7 @@ public class ProjectService {
         Map<String, Object> extractedVariables = aiService.analyzeToJSON(finalPdfText, projectCreateRequest.userIntent(), projectCreateRequest.roadmapType());
 
         Project project = Project.builder()
-                .userId(userId)
+                .user(user)
                 .title(projectCreateRequest.title())
                 .roadmapType(projectCreateRequest.roadmapType())
                 .initialContext(extractedVariables)
@@ -69,7 +70,7 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorType.PROJECT_NOT_FOUND));
 
-        if (!project.getUserId().equals(userId)) {
+        if (!project.getUser().getUserId().equals(userId)) {
             throw new BusinessException(ErrorType.FORBIDDEN_ACCESS);
         }
 
