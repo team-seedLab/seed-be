@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
 public class UserController {
-    public final UserService userService;
+    private final UserService userService;
 
     @Operation(
             summary = "유저 정보 가져오기",
@@ -25,7 +25,7 @@ public class UserController {
     public ApiResponse<UserDetailResponse> getUserDetails(
             @AuthenticationPrincipal CustomUserDetails user
     ) {
-        UserDetailResponse response = userService.getUserDetails(user.getUser().getUserId());
+        UserDetailResponse response = userService.getUserDetails(user.getUser());
         return ApiResponse.success(response);
     }
 }
