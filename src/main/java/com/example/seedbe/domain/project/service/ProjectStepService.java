@@ -24,14 +24,13 @@ public class ProjectStepService {
     private final ProjectValidator projectValidator;
     private final PromptTemplateRepository templateRepository;
     private final ProjectStepLogRepository stepLogRepository;
+
     @Transactional
     public ProjectPromptStepResponse createAndSavePrompt(UUID userId, UUID projectId, String stepCodeStr) {
-        //스탭 이름 검사
-        RoadmapStep requestedStep = RoadmapStep.fromStepCode(stepCodeStr);
-
-        //스탭이 스탭타입에 속하는 건지 검사
-        Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
-        project.getRoadmapType().validateStep(requestedStep);
+        // 유효성 검사
+        ValidatedContext context = validateAndGetContext(userId, projectId, stepCodeStr);
+        Project project = context.project();
+        RoadmapStep requestedStep = context.step();
 
         PromptTemplate template = templateRepository.findByRoadmapTypeAndRoadmapStepAndIsActiveTrue(
                         project.getRoadmapType(), requestedStep)
@@ -59,6 +58,20 @@ public class ProjectStepService {
         return ProjectPromptStepResponse.from(newLog);
     }
 
+    @Transactional
+    public void saveStepResult(UUID userId, UUID projectId, String stepCodeStr, String resultText) {
+        // 유효성 검사
+        ValidatedContext context = validateAndGetContext(userId, projectId, stepCodeStr);
+        Project project = context.project();
+        RoadmapStep requestedStep = context.step();
+
+        ProjectStepLog stepLog = stepLogRepository.findByProjectAndRoadmapStep(project, requestedStep)
+                .orElseThrow(() -> new BusinessException(ErrorType.PROMPT_GENERATION_FAILED));
+
+        stepLog.updateSubmittedResult(resultText);
+    }
+
+
     // JSON(Map) 변수 치환기
     private String replaceVariables(String promptTemplate, Map<String, Object> initialContextMap) {
         String result = promptTemplate;
@@ -72,5 +85,17 @@ public class ProjectStepService {
         }
 
         return result;
+    }
+
+    // 공통 검증 헬퍼 메서드
+    private record ValidatedContext(Project project, RoadmapStep step) {}
+
+    private ValidatedContext validateAndGetContext(UUID userId, UUID projectId, String stepCodeStr) {
+        RoadmapStep requestedStep = RoadmapStep.fromStepCode(stepCodeStr);
+
+        Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
+        project.getRoadmapType().validateStep(requestedStep);
+
+        return new ValidatedContext(project, requestedStep);
     }
 }

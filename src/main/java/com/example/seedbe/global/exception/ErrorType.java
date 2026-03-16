@@ -34,6 +34,7 @@ public enum ErrorType {
     PROMPT_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "AP002", "템플릿이 DB에 존재하지 않습니다"),
     STEP_SEQUENCE_VIOLATION(HttpStatus.BAD_REQUEST, "AP003", "이전 단계의 AI 결과를 먼저 입력해야 합니다.");
 
+
     private final HttpStatus httpStatus;
     private final String code;
     private final String message;
