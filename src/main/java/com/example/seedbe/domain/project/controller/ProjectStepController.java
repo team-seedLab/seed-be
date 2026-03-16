@@ -2,10 +2,14 @@ package com.example.seedbe.domain.project.controller;
 
 import com.example.seedbe.domain.project.dto.ProjectPromptStepRequest;
 import com.example.seedbe.domain.project.dto.ProjectPromptStepResponse;
+import com.example.seedbe.domain.project.enums.RoadmapStep;
 import com.example.seedbe.domain.project.service.ProjectStepService;
+import com.example.seedbe.global.common.constants.SwaggerConstants;
 import com.example.seedbe.global.common.response.ApiResponse;
 import com.example.seedbe.global.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +32,7 @@ public class ProjectStepController {
     public ApiResponse<ProjectPromptStepResponse> startStep(
             @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable UUID projectId,
+            @Parameter(description = SwaggerConstants.STEP_CODE_DESCRIPTION)
             @PathVariable String stepCode) {
 
         ProjectPromptStepResponse response = projectStepService.createAndSavePrompt(user.getUser().getUserId(), projectId, stepCode);
@@ -43,6 +48,7 @@ public class ProjectStepController {
     public ApiResponse<Void> saveStepResult(
             @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable UUID projectId,
+            @Parameter(description = SwaggerConstants.STEP_CODE_DESCRIPTION)
             @PathVariable String stepCode,
             @Valid @RequestBody ProjectPromptStepRequest request) {
 
