@@ -23,9 +23,9 @@ public class ProjectStepController {
     private final ProjectStepService projectStepService;
 
     @Operation(
-            summary = "단계 시작 및 프롬프트 발급",
+            summary = "각 단계 프롬프트 발급",
             description = "해당 단계의 변수가 치환된 프롬프트를 발급하고 로그를 저장합니다.")
-    @PostMapping("/{stepCode}/start")
+    @PostMapping("/{stepCode}")
     public ApiResponse<ProjectPromptStepResponse> startStep(
             @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable UUID projectId,
