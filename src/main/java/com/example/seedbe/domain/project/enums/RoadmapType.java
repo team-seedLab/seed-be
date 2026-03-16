@@ -46,12 +46,12 @@ public enum RoadmapType {
     ));
 
     private final String description;
-    private final String taskCode;
+    private final String typeCode;
     private final List<RoadmapStep> validSteps;
 
     public void validateStep(RoadmapStep step) {
         if (!this.validSteps.contains(step)) {
-            throw new BusinessException(ErrorType.INVALID_ROADMAP_STEP);
+            throw new BusinessException(ErrorType.NO_MATCHING_ROADMAP_TYPE);
         }
     }
 }

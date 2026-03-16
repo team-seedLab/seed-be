@@ -3,13 +3,11 @@ package com.example.seedbe.domain.project.controller;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
-import com.example.seedbe.domain.project.enums.RoadmapType;
 import com.example.seedbe.domain.project.service.ProjectService;
 import com.example.seedbe.global.common.response.ApiResponse;
 import com.example.seedbe.global.common.response.PageResponse;
 import com.example.seedbe.global.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +18,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "Project Controller", description = "프로젝트 관련 API")
@@ -71,7 +67,7 @@ public class ProjectController {
             @AuthenticationPrincipal CustomUserDetails user,
             @Valid @ModelAttribute ProjectCreateRequest projectCreateRequest
             ){
-        ProjectDetailResponse response = projectService.createProject(user.getUser().getUserId(), projectCreateRequest);
+        ProjectDetailResponse response = projectService.createProject(user.getUser(), projectCreateRequest);
         return ApiResponse.success(response);
     }
 

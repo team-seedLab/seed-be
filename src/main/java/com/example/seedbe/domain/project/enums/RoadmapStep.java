@@ -1,7 +1,11 @@
 package com.example.seedbe.domain.project.enums;
 
+import com.example.seedbe.global.exception.BusinessException;
+import com.example.seedbe.global.exception.ErrorType;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+
+import java.util.Arrays;
 
 @Getter
 @RequiredArgsConstructor
@@ -42,4 +46,11 @@ public enum RoadmapStep {
 
     private final String stepCode;
     private final String description;
+
+    public static RoadmapStep fromStepCode(String code) {
+        return Arrays.stream(values())
+                .filter(step -> step.getStepCode().equalsIgnoreCase(code))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorType.INVALID_ROADMAP_STEP));
+    }
 }
