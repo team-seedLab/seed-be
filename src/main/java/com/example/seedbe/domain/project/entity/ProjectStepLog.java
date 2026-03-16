@@ -46,6 +46,9 @@ public class ProjectStepLog extends BaseTimeEntity {
         this.roadmapStep = roadmapStep;
         this.providedPromptSnapshot = providedPromptSnapshot;
         this.userSubmittedResult = userSubmittedResult;
+    }
 
+    public void updateSubmittedResult(String resultText) {
+        this.userSubmittedResult = resultText;
     }
 }

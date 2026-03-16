@@ -32,7 +32,9 @@ public enum ErrorType {
     // [AI Prompt] AI 프롬프트 네비게이션 관련
     PROMPT_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "AP001", "단계별 프롬프트 생성에 실패했습니다."),
     PROMPT_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "AP002", "템플릿이 DB에 존재하지 않습니다"),
-    STEP_SEQUENCE_VIOLATION(HttpStatus.BAD_REQUEST, "AP003", "이전 단계의 AI 결과를 먼저 입력해야 합니다.");
+    STEP_SEQUENCE_VIOLATION(HttpStatus.BAD_REQUEST, "AP003", "이전 단계의 AI 결과를 먼저 입력해야 합니다."),
+    STEP_NOT_STARTED(HttpStatus.BAD_REQUEST, "AP004", "해당 단계가 아직 시작되지 않았습니다. 프롬프트를 먼저 발급받으세요.");
+
 
     private final HttpStatus httpStatus;
     private final String code;
