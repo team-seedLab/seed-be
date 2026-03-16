@@ -1,10 +1,10 @@
 package com.example.seedbe.domain.project.service;
 
+import com.example.seedbe.domain.project.component.ProjectValidator;
 import com.example.seedbe.domain.project.dto.ProjectPromptStepResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.entity.ProjectStepLog;
 import com.example.seedbe.domain.project.enums.RoadmapStep;
-import com.example.seedbe.domain.project.repository.ProjectRepository;
 import com.example.seedbe.domain.project.repository.ProjectStepLogRepository;
 import com.example.seedbe.domain.prompt.entity.PromptTemplate;
 import com.example.seedbe.domain.prompt.repository.PromptTemplateRepository;
@@ -21,7 +21,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ProjectStepService {
-    private final ProjectRepository projectRepository;
+    private final ProjectValidator projectValidator;
     private final PromptTemplateRepository templateRepository;
     private final ProjectStepLogRepository stepLogRepository;
     @Transactional
@@ -30,7 +30,7 @@ public class ProjectStepService {
         RoadmapStep requestedStep = RoadmapStep.fromStepCode(stepCodeStr);
 
         //스탭이 스탭타입에 속하는 건지 검사
-        Project project = getProjectWithOwnershipCheck(userId, projectId);
+        Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
         project.getRoadmapType().validateStep(requestedStep);
 
         PromptTemplate template = templateRepository.findByRoadmapTypeAndRoadmapStepAndIsActiveTrue(
@@ -72,16 +72,5 @@ public class ProjectStepService {
         }
 
         return result;
-    }
-
-    private Project getProjectWithOwnershipCheck(UUID userId, UUID projectId) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new BusinessException(ErrorType.PROJECT_NOT_FOUND));
-
-        if (!project.getUser().getUserId().equals(userId)) {
-            throw new BusinessException(ErrorType.FORBIDDEN_ACCESS);
-        }
-
-        return project;
     }
 }
