@@ -53,4 +53,8 @@ public class Project extends BaseTimeEntity {
         this.status = status;
         this.initialContext = initialContext;
     }
+
+    public void complete(){
+        this.status = ProjectStatus.COMPLETED;
+    }
 }
