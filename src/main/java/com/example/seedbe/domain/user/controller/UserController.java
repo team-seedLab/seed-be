@@ -20,7 +20,7 @@ public class UserController {
     private final UserService userService;
 
     @Operation(
-            summary = "유저 정보 가져오기",
+            summary = "유저 정보 가져오기 (로그인 필요)",
             description = "유저 정보를 가져옵니다"
     )
     @GetMapping("/me")

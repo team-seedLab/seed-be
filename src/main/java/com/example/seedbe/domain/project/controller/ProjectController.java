@@ -85,7 +85,7 @@ public class ProjectController {
     }
 
     @Operation(
-            summary = "프로젝트 완료 처리",
+            summary = "프로젝트 완료 처리 (로그인 필요)",
             description = "진행 중인 프로젝트를 완료(COMPLETED) 상태로 변경합니다.")
     @PatchMapping("/{projectId}/complete")
     public ApiResponse<Void> completeProject(
