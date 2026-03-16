@@ -54,4 +54,8 @@ public enum RoadmapType {
             throw new BusinessException(ErrorType.NO_MATCHING_ROADMAP_TYPE);
         }
     }
+
+    public RoadmapStep getLastStep() {
+        return this.validSteps.getLast();
+    }
 }
