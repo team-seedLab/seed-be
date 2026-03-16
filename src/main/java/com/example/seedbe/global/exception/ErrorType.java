@@ -28,12 +28,14 @@ public enum ErrorType {
     AI_RESPONSE_PARSE_ERROR(HttpStatus.BAD_REQUEST, "P006", "AI 응답 파싱에 실패했습니다"),
     INVALID_ROADMAP_STEP(HttpStatus.BAD_REQUEST, "P007", "해당 로드맵 단계가 존재하지 않습니다"),
     NO_MATCHING_ROADMAP_TYPE(HttpStatus.BAD_REQUEST, "P008", "해당 로드맵 유형에서 지원하지 않는 단계입니다."),
+    NOT_LAST_STEP(HttpStatus.BAD_REQUEST, "P009", "마지막 단계가 아닙니다"),
+
 
     // [AI Prompt] AI 프롬프트 네비게이션 관련
-    PROMPT_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "AP001", "단계별 프롬프트 생성에 실패했습니다."),
-    PROMPT_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "AP002", "템플릿이 DB에 존재하지 않습니다"),
-    STEP_SEQUENCE_VIOLATION(HttpStatus.BAD_REQUEST, "AP003", "이전 단계의 AI 결과를 먼저 입력해야 합니다."),
-    STEP_NOT_STARTED(HttpStatus.BAD_REQUEST, "AP004", "해당 단계가 아직 시작되지 않았습니다. 프롬프트를 먼저 발급받으세요.");
+    PROMPT_TEMPLATE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "AP001", "프롬프트 템플릿이 DB에 존재하지 않습니다"),
+    STEP_NOT_STARTED(HttpStatus.NOT_FOUND, "AP002", "해당 단계가 아직 시작되지 않았습니다. 프롬프트를 먼저 발급받으세요."),
+    GENERATED_RESULT_NOT_FOUND(HttpStatus.BAD_REQUEST, "AP003", "해당 단계 결과를 등록하셔야 합니다"),
+    GENERATED_PROMPT_NOT_FOUND(HttpStatus.NOT_FOUND, "AP004", "해당 단계 프롬프트를 찾을 수 없습니다");
 
 
     private final HttpStatus httpStatus;

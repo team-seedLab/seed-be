@@ -1,9 +1,12 @@
 package com.example.seedbe.domain.project.entity;
 
 import com.example.seedbe.domain.project.enums.ProjectStatus;
+import com.example.seedbe.domain.project.enums.RoadmapStep;
 import com.example.seedbe.domain.project.enums.RoadmapType;
 import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.global.common.entity.BaseTimeEntity;
+import com.example.seedbe.global.exception.BusinessException;
+import com.example.seedbe.global.exception.ErrorType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -54,7 +57,17 @@ public class Project extends BaseTimeEntity {
         this.initialContext = initialContext;
     }
 
-    public void complete(){
+    public void complete(ProjectStepLog projectStepLog){
+        RoadmapStep lastStep = this.roadmapType.getLastStep();
+
+        if (!projectStepLog.getRoadmapStep().equals(lastStep)) {
+            throw new BusinessException(ErrorType.NOT_LAST_STEP);
+        }
+
+        if (projectStepLog.getUserSubmittedResult().isBlank()) {
+            throw new BusinessException(ErrorType.GENERATED_RESULT_NOT_FOUND);
+        }
+
         this.status = ProjectStatus.COMPLETED;
     }
 }

@@ -5,8 +5,10 @@ import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.entity.Project;
+import com.example.seedbe.domain.project.entity.ProjectStepLog;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
 import com.example.seedbe.domain.project.repository.ProjectRepository;
+import com.example.seedbe.domain.project.repository.ProjectStepLogRepository;
 import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
@@ -25,6 +27,7 @@ import java.util.UUID;
 public class ProjectService {
     private final ProjectValidator projectValidator;
     private final ProjectRepository projectRepository;
+    private final ProjectStepLogRepository stepLogRepository;
     private final PdfService pdfService;
     private final AIService aiService;
 
@@ -71,6 +74,11 @@ public class ProjectService {
     @Transactional
     public void completeProject(UUID userId, UUID projectId) {
         Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
-        project.complete();
+
+        ProjectStepLog lastStepLog = stepLogRepository.findByProjectAndRoadmapStep(
+                        project, project.getRoadmapType().getLastStep())
+                .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
+
+        project.complete(lastStepLog);
     }
 }

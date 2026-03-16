@@ -34,7 +34,7 @@ public class ProjectStepService {
 
         PromptTemplate template = templateRepository.findByRoadmapTypeAndRoadmapStepAndIsActiveTrue(
                         project.getRoadmapType(), requestedStep)
-                .orElseThrow(() -> new BusinessException(ErrorType.PROMPT_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ErrorType.PROMPT_TEMPLATE_NOT_FOUND));
 
         Optional<ProjectStepLog> existingLog = stepLogRepository.findByProjectAndRoadmapStep(project, requestedStep);
 
@@ -69,7 +69,7 @@ public class ProjectStepService {
                 .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
 
         if (stepLog.getProvidedPromptSnapshot().isBlank()) {
-            throw new BusinessException(ErrorType.PROMPT_GENERATION_FAILED);
+            throw new BusinessException(ErrorType.GENERATED_PROMPT_NOT_FOUND);
         }
 
         stepLog.updateSubmittedResult(resultText);
