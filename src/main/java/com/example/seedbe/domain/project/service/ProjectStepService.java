@@ -66,7 +66,11 @@ public class ProjectStepService {
         RoadmapStep requestedStep = context.step();
 
         ProjectStepLog stepLog = stepLogRepository.findByProjectAndRoadmapStep(project, requestedStep)
-                .orElseThrow(() -> new BusinessException(ErrorType.PROMPT_GENERATION_FAILED));
+                .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
+
+        if (stepLog.getProvidedPromptSnapshot().isBlank()) {
+            throw new BusinessException(ErrorType.PROMPT_GENERATION_FAILED);
+        }
 
         stepLog.updateSubmittedResult(resultText);
     }
