@@ -1,0 +1,87 @@
+package com.example.seedbe.domain.project.service;
+
+import com.example.seedbe.domain.project.dto.ProjectPromptStepResponse;
+import com.example.seedbe.domain.project.entity.Project;
+import com.example.seedbe.domain.project.entity.ProjectStepLog;
+import com.example.seedbe.domain.project.enums.RoadmapStep;
+import com.example.seedbe.domain.project.repository.ProjectRepository;
+import com.example.seedbe.domain.project.repository.ProjectStepLogRepository;
+import com.example.seedbe.domain.prompt.entity.PromptTemplate;
+import com.example.seedbe.domain.prompt.repository.PromptTemplateRepository;
+import com.example.seedbe.global.exception.BusinessException;
+import com.example.seedbe.global.exception.ErrorType;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class ProjectStepService {
+    private final ProjectRepository projectRepository;
+    private final PromptTemplateRepository templateRepository;
+    private final ProjectStepLogRepository stepLogRepository;
+    @Transactional
+    public ProjectPromptStepResponse createAndSavePrompt(UUID userId, UUID projectId, String stepCodeStr) {
+        //스탭 이름 검사
+        RoadmapStep requestedStep = RoadmapStep.fromStepCode(stepCodeStr);
+
+        //스탭이 스탭타입에 속하는 건지 검사
+        Project project = getProjectWithOwnershipCheck(userId, projectId);
+        project.getRoadmapType().validateStep(requestedStep);
+
+        PromptTemplate template = templateRepository.findByRoadmapTypeAndRoadmapStepAndIsActiveTrue(
+                        project.getRoadmapType(), requestedStep)
+                .orElseThrow(() -> new BusinessException(ErrorType.PROMPT_NOT_FOUND));
+
+        Optional<ProjectStepLog> existingLog = stepLogRepository.findByProjectAndRoadmapStep(project, requestedStep);
+
+        // 존재하면 그대로 DTO로 반환
+        if (existingLog.isPresent()) {
+            return ProjectPromptStepResponse.from(existingLog.get());
+        }
+
+        // 존재하지 않으면 새로 생성후 DTO로 반환
+        String finalActionPrompt = replaceVariables(template.getActionPrompt(), project.getInitialContext());
+
+        ProjectStepLog newLog = ProjectStepLog.builder()
+                .project(project)
+                .promptTemplate(template)
+                .roadmapStep(requestedStep)
+                .providedPromptSnapshot(finalActionPrompt)
+                .build();
+
+        stepLogRepository.save(newLog);
+
+        return ProjectPromptStepResponse.from(newLog);
+    }
+
+    // JSON(Map) 변수 치환기
+    private String replaceVariables(String promptTemplate, Map<String, Object> initialContextMap) {
+        String result = promptTemplate;
+
+        // Map의 Key-Value를 돌면서 템플릿의 [key]를 value로 즉시 치환
+        for (Map.Entry<String, Object> entry : initialContextMap.entrySet()) {
+            String targetKey = "[" + entry.getKey() + "]";
+            String replaceValue = String.valueOf(entry.getValue());
+
+            result = result.replace(targetKey, replaceValue);
+        }
+
+        return result;
+    }
+
+    private Project getProjectWithOwnershipCheck(UUID userId, UUID projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorType.PROJECT_NOT_FOUND));
+
+        if (!project.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorType.FORBIDDEN_ACCESS);
+        }
+
+        return project;
+    }
+}

@@ -46,7 +46,7 @@ public enum RoadmapType {
     ));
 
     private final String description;
-    private final String taskCode;
+    private final String typeCode;
     private final List<RoadmapStep> validSteps;
 
     public void validateStep(RoadmapStep step) {

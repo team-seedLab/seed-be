@@ -5,6 +5,7 @@ import com.example.seedbe.domain.prompt.entity.PromptTemplate;
 import com.example.seedbe.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -35,6 +36,16 @@ public class ProjectStepLog extends BaseTimeEntity {
     @Column(name = "provided_prompt_snapshot", columnDefinition = "TEXT", nullable = false)
     private String providedPromptSnapshot;
 
-    @Column(name = "user_submitted_result", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "user_submitted_result", columnDefinition = "TEXT")
     private String userSubmittedResult;
+
+    @Builder
+    public ProjectStepLog(Project project, PromptTemplate promptTemplate, RoadmapStep roadmapStep, String providedPromptSnapshot, String userSubmittedResult) {
+        this.project = project;
+        this.promptTemplate = promptTemplate;
+        this.roadmapStep = roadmapStep;
+        this.providedPromptSnapshot = providedPromptSnapshot;
+        this.userSubmittedResult = userSubmittedResult;
+
+    }
 }
