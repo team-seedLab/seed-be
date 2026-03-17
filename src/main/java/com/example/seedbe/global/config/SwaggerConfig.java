@@ -23,6 +23,8 @@ public class SwaggerConfig {
                         
                         - 로컬 Kakao 로그인: [http://localhost:8080/oauth2/authorization/kakao](http://localhost:8080/oauth2/authorization/kakao)
                         - 배포 Kakao 로그인: [https://api.seedlab.cloud/oauth2/authorization/kakao](https://api.seedlab.cloud/oauth2/authorization/kakao)
+                        - 로컬 Google 로그인: [http://localhost:8080/oauth2/authorization/google](http://localhost:8080/oauth2/authorization/google)
+                        - 배포 Google 로그인: [https://api.seedlab.cloud/oauth2/authorization/google](https://api.seedlab.cloud/oauth2/authorization/google)
                         
                         ## 📌 스웨거 테스트시 유의점
                         바로 밑에 보이는 Servers에서 로컬환경이면 로컬주소를 선택해서, 배포환경이면 배포주소를 선택하고 테스트해주세요.
