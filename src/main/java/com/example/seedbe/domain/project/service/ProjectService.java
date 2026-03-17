@@ -1,11 +1,14 @@
 package com.example.seedbe.domain.project.service;
 
+import com.example.seedbe.domain.project.component.ProjectValidator;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.entity.Project;
+import com.example.seedbe.domain.project.entity.ProjectStepLog;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
 import com.example.seedbe.domain.project.repository.ProjectRepository;
+import com.example.seedbe.domain.project.repository.ProjectStepLogRepository;
 import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
@@ -22,7 +25,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ProjectService {
+    private final ProjectValidator projectValidator;
     private final ProjectRepository projectRepository;
+    private final ProjectStepLogRepository stepLogRepository;
     private final PdfService pdfService;
     private final AIService aiService;
 
@@ -32,7 +37,7 @@ public class ProjectService {
     }
 
     public ProjectDetailResponse getProjectDetails(UUID userId, UUID projectId) {
-        Project project = getProjectWithOwnershipCheck(userId, projectId);
+        Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
         return ProjectDetailResponse.from(project);
     }
 
@@ -62,18 +67,18 @@ public class ProjectService {
 
     @Transactional
     public void deleteProject(UUID userId, UUID projectId) {
-        Project project = getProjectWithOwnershipCheck(userId, projectId);
+        Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
         projectRepository.delete(project);
     }
 
-    private Project getProjectWithOwnershipCheck(UUID userId, UUID projectId) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new BusinessException(ErrorType.PROJECT_NOT_FOUND));
+    @Transactional
+    public void completeProject(UUID userId, UUID projectId) {
+        Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
 
-        if (!project.getUser().getUserId().equals(userId)) {
-            throw new BusinessException(ErrorType.FORBIDDEN_ACCESS);
-        }
+        ProjectStepLog lastStepLog = stepLogRepository.findByProjectAndRoadmapStep(
+                        project, project.getRoadmapType().getLastStep())
+                .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
 
-        return project;
+        project.complete(lastStepLog);
     }
 }

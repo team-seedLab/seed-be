@@ -83,4 +83,17 @@ public class ProjectController {
         projectService.deleteProject(user.getUser().getUserId(), projectId);
         return ApiResponse.success(null);
     }
+
+    @Operation(
+            summary = "프로젝트 완료 처리 (로그인 필요)",
+            description = "진행 중인 프로젝트를 완료(COMPLETED) 상태로 변경합니다.")
+    @PatchMapping("/{projectId}/complete")
+    public ApiResponse<Void> completeProject(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable UUID projectId) {
+
+        projectService.completeProject(user.getUser().getUserId(), projectId);
+
+        return ApiResponse.success(null);
+    }
 }

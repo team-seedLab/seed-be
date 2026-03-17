@@ -26,7 +26,7 @@ public class ProjectStepController {
     private final ProjectStepService projectStepService;
 
     @Operation(
-            summary = "각 단계 프롬프트 발급",
+            summary = "각 단계 프롬프트 발급 (로그인 필요)",
             description = "해당 단계의 변수가 치환된 프롬프트를 발급하고 로그를 저장합니다.")
     @PostMapping("/{stepCode}")
     public ApiResponse<ProjectPromptStepResponse> startStep(
@@ -41,7 +41,7 @@ public class ProjectStepController {
     }
 
     @Operation(
-            summary = "단계 결과물 저장 및 수정",
+            summary = "단계 결과물 저장 및 수정 (로그인 필요)",
             description = "발급받은 프롬프트를 바탕으로 생성한 결과물을 저장하거나 수정(덮어쓰기)합니다."
     )
     @PatchMapping("/{stepCode}/result")
