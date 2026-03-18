@@ -47,9 +47,9 @@ public class ProjectController {
 
     @Operation(
             summary = "단일 프로젝트 상세 조회 (로그인 필요)",
-            description = "프로젝트 ID로 특정 프로젝트의 상세 정보(initial_context 포함)를 조회합니다."
+            description = "프로젝트 ID로 특정 프로젝트의 기본 정보와 지금까지 진행된 프롬프트 단계(steps) 이력을 한 번에 조회합니다."
     )
-    @GetMapping("{projectId}")
+    @GetMapping("/{projectId}")
     public ApiResponse<ProjectDetailResponse> getProjectDetails(
             @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable UUID projectId
