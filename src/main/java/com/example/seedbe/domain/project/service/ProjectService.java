@@ -32,8 +32,8 @@ public class ProjectService {
     private final PdfService pdfService;
     private final AIService aiService;
 
-    public Page<ProjectListResponse> getProjects(UUID userId, Pageable pageable) {
-        Page<Project> projectPage = projectRepository.findAllByUser_UserId(userId, pageable);
+    public Page<ProjectListResponse> getProjects(UUID userId, ProjectStatus status, Pageable pageable) {
+        Page<Project> projectPage = projectRepository.findByUserIdAndStatus(userId, status, pageable);
         return projectPage.map(ProjectListResponse::from);
     }
 

@@ -3,6 +3,7 @@ package com.example.seedbe.domain.project.controller;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
+import com.example.seedbe.domain.project.enums.ProjectStatus;
 import com.example.seedbe.domain.project.service.ProjectService;
 import com.example.seedbe.global.common.response.ApiResponse;
 import com.example.seedbe.global.common.response.PageResponse;
@@ -35,12 +36,13 @@ public class ProjectController {
     @GetMapping
     public ApiResponse<PageResponse<ProjectListResponse>> getProjects(
             @AuthenticationPrincipal CustomUserDetails user, // 보안 인증 객체 (본인 것만 조회)
+            @RequestParam(required = false) ProjectStatus status,
             @PageableDefault(size = 10, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC)
             @ParameterObject Pageable pageable) {
 
-        Page<ProjectListResponse> dtoPage = projectService.getProjects(user.getUser().getUserId(), pageable);
+        Page<ProjectListResponse> response = projectService.getProjects(user.getUser().getUserId(), status, pageable);
 
-        PageResponse<ProjectListResponse> customPageResponse = PageResponse.of(dtoPage);
+        PageResponse<ProjectListResponse> customPageResponse = PageResponse.of(response);
 
         return ApiResponse.success(customPageResponse);
     }
