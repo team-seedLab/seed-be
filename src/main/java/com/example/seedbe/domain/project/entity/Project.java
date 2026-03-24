@@ -15,6 +15,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -47,6 +49,9 @@ public class Project extends BaseTimeEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "initial_context", columnDefinition = "jsonb")
     private Map<String, Object> initialContext;
+
+    @OneToMany(mappedBy = "project", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<ProjectStepLog> stepLogs = new ArrayList<>();
 
     @Builder
     public Project(User user, String title, RoadmapType roadmapType, ProjectStatus status, Map<String, Object> initialContext) {
