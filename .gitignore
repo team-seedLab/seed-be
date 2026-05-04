@@ -20,6 +20,7 @@ bin/
 ### application.yml ###
 application-local.yml
 application-prod.yml
+!src/main/resources/application-prod.yml
 
 
 ### IntelliJ IDEA ###

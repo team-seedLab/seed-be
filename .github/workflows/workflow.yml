@@ -21,10 +21,6 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: application-prod.yml 파일 생성하기
-        run: |
-          echo "${{ secrets.APPLICATION_PROD_YML }}" | base64 --decode > ./src/main/resources/application-prod.yml
-
       - name: 그레이들 실행 권한 부여
         run: chmod +x ./gradlew
 
@@ -50,9 +46,27 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: self-hosted
+    env:
+      PROD_DATASOURCE_URL: ${{ secrets.PROD_DATASOURCE_URL }}
+      PROD_DATASOURCE_USERNAME: ${{ secrets.PROD_DATASOURCE_USERNAME }}
+      PROD_DATASOURCE_PASSWORD: ${{ secrets.PROD_DATASOURCE_PASSWORD }}
+      KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
+      KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
+      - name: 소스 코드 가져오기
+        uses: actions/checkout@v4
+
       - name: 라즈베리파이에서 GHCR 로그인
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: 도커 컴포즈 파일 배포
+        run: |
+          mkdir -p /home/junsik/seed
+          cp docker-compose.prod.yml /home/junsik/seed/docker-compose.prod.yml
 
       - name: 도커 컴포즈 실행
         run: |
