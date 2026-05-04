@@ -2,14 +2,13 @@ package com.example.seedbe.exception;
 
 import com.example.seedbe.global.exception.GlobalExceptionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -17,15 +16,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(TestController.class)
-@AutoConfigureMockMvc(addFilters = false)
-@Import(GlobalExceptionHandler.class)
 class GlobalExceptionHandlerTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @BeforeEach
+    void setUp() {
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+
+        mockMvc = MockMvcBuilders.standaloneSetup(new TestController())
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .setValidator(validator)
+                .build();
+    }
 
     @Test
     @DisplayName("1. 정상 요청 시 SUCCESS 상태와 데이터가 반환된다.")
