@@ -1,6 +1,6 @@
 services:
   seed-backend-prod-server:
-    image: ghcr.io/${GITHUB_REPOSITORY}/seed-backend-prod-server:latest
+    image: ${BACKEND_IMAGE}
     container_name: seed-backend-prod-server
     restart: always
     ports:
