@@ -63,6 +63,11 @@ jobs:
       - name: 라즈베리파이에서 GHCR 로그인
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+      - name: 도커 이미지 이름 설정
+        run: |
+          REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "BACKEND_IMAGE=ghcr.io/$REPO/seed-backend-prod-server:latest" >> "$GITHUB_ENV"
+
       - name: 도커 컴포즈 파일 배포
         run: |
           mkdir -p /home/junsik/seed
