@@ -32,7 +32,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String token = resolveTokenFromCookie(request);
 
-        if (token != null && jwtProvider.validateToken(token)) {
+        if (token != null && jwtProvider.validateAccessToken(token)) {
             String userId = jwtProvider.getUserIdFromToken(token);
             UserDetails userDetails = customUserDetailsService.loadUserByUsername(userId);
 

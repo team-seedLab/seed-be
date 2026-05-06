@@ -27,7 +27,7 @@ public class AuthService {
 
     @Transactional
     public void reissueToken(String refreshToken, HttpServletResponse response, Boolean isSecure) {
-        if (!jwtProvider.validateToken(refreshToken)) {
+        if (!jwtProvider.validateRefreshToken(refreshToken)) {
             throw new BusinessException(ErrorType.INVALID_TOKEN);
         }
 
@@ -39,6 +39,7 @@ public class AuthService {
         }
 
         if (!refreshTokenService.matchesRefreshTokenHash(savedRefreshTokenHash, refreshToken)) {
+            log.warn("유저 ID: {} - Refresh Token 재사용 의심으로 세션 삭제", userId);
             refreshTokenService.deleteRefreshToken(userId);
             throw new BusinessException(ErrorType.INVALID_TOKEN);
         }

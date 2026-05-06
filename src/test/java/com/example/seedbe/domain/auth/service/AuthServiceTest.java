@@ -57,7 +57,7 @@ class AuthServiceTest {
                 .build();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        when(jwtProvider.validateToken(refreshToken)).thenReturn(true);
+        when(jwtProvider.validateRefreshToken(refreshToken)).thenReturn(true);
         when(jwtProvider.getUserIdFromToken(refreshToken)).thenReturn(userIdString);
         when(refreshTokenService.getRefreshTokenHash(userIdString)).thenReturn(savedRefreshTokenHash);
         when(refreshTokenService.matchesRefreshTokenHash(savedRefreshTokenHash, refreshToken)).thenReturn(true);
@@ -85,7 +85,7 @@ class AuthServiceTest {
         String rotatedRefreshToken = "rotated-refresh-token";
         String savedRefreshTokenHash = "saved-refresh-token-hash";
 
-        when(jwtProvider.validateToken(rotatedRefreshToken)).thenReturn(true);
+        when(jwtProvider.validateRefreshToken(rotatedRefreshToken)).thenReturn(true);
         when(jwtProvider.getUserIdFromToken(rotatedRefreshToken)).thenReturn(userIdString);
         when(refreshTokenService.getRefreshTokenHash(userIdString)).thenReturn(savedRefreshTokenHash);
         when(refreshTokenService.matchesRefreshTokenHash(savedRefreshTokenHash, rotatedRefreshToken)).thenReturn(false);
@@ -95,5 +95,22 @@ class AuthServiceTest {
 
         verify(refreshTokenService).deleteRefreshToken(userIdString);
         verify(userRepository, never()).findById(userId);
+    }
+
+    @Test
+    @DisplayName("refresh token 타입이 아니면 Redis refresh token을 삭제하지 않는다.")
+    void reissueTokenDoesNotDeleteRefreshTokenWhenTokenIsNotRefreshToken() {
+        JwtProperties jwtProperties = new JwtProperties("secret", 3_600_000L, 1_209_600_000L);
+        AuthService authService = new AuthService(jwtProvider, refreshTokenService, userRepository, jwtProperties);
+
+        String accessToken = "access-token";
+
+        when(jwtProvider.validateRefreshToken(accessToken)).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.reissueToken(accessToken, new MockHttpServletResponse(), true))
+                .isInstanceOf(BusinessException.class);
+
+        verify(jwtProvider, never()).getUserIdFromToken(accessToken);
+        verify(refreshTokenService, never()).deleteRefreshToken(org.mockito.ArgumentMatchers.anyString());
     }
 }
