@@ -39,6 +39,7 @@ public class AuthService {
         }
 
         if (!refreshTokenService.matchesRefreshTokenHash(savedRefreshTokenHash, refreshToken)) {
+            log.warn("유저 ID: {} - Refresh Token 재사용 의심으로 세션 삭제", userId);
             refreshTokenService.deleteRefreshToken(userId);
             throw new BusinessException(ErrorType.INVALID_TOKEN);
         }

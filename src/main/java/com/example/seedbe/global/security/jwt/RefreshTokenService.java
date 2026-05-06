@@ -34,7 +34,14 @@ public class RefreshTokenService {
     }
 
     public boolean matchesRefreshTokenHash(String savedRefreshTokenHash, String refreshToken) {
-        return savedRefreshTokenHash != null && savedRefreshTokenHash.equals(hashToken(refreshToken));
+        if (savedRefreshTokenHash == null) {
+            return false;
+        }
+
+        byte[] savedRefreshTokenHashBytes = HexFormat.of().parseHex(savedRefreshTokenHash);
+        byte[] requestRefreshTokenHashBytes = HexFormat.of().parseHex(hashToken(refreshToken));
+
+        return MessageDigest.isEqual(savedRefreshTokenHashBytes, requestRefreshTokenHashBytes);
     }
 
     public void deleteRefreshToken(String userId) {
