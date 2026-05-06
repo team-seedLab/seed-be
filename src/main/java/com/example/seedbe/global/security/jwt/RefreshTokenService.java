@@ -4,7 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.TimeUnit;
+import java.util.HexFormat;
 
 @Service
 @RequiredArgsConstructor
@@ -19,17 +23,31 @@ public class RefreshTokenService {
 
         refreshTokenRedisTemplate.opsForValue().set(
                 REDIS_KEY_PREFIX + userId,
-                refreshToken,
+                hashToken(refreshToken),
                 expirationMs,
                 TimeUnit.MILLISECONDS
         );
     }
 
-    public String getRefreshToken(String userId) {
+    public String getRefreshTokenHash(String userId) {
         return refreshTokenRedisTemplate.opsForValue().get(REDIS_KEY_PREFIX + userId);
+    }
+
+    public boolean matchesRefreshTokenHash(String savedRefreshTokenHash, String refreshToken) {
+        return savedRefreshTokenHash != null && savedRefreshTokenHash.equals(hashToken(refreshToken));
     }
 
     public void deleteRefreshToken(String userId) {
         refreshTokenRedisTemplate.delete(REDIS_KEY_PREFIX + userId);
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashedBytes = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hashedBytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm is not available.", e);
+        }
     }
 }

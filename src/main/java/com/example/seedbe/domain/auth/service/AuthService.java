@@ -33,8 +33,13 @@ public class AuthService {
 
         String userId = jwtProvider.getUserIdFromToken(refreshToken);
 
-        String savedRefreshToken = refreshTokenService.getRefreshToken(userId);
-        if (savedRefreshToken == null || !savedRefreshToken.equals(refreshToken)) {
+        String savedRefreshTokenHash = refreshTokenService.getRefreshTokenHash(userId);
+        if (savedRefreshTokenHash == null) {
+            throw new BusinessException(ErrorType.INVALID_TOKEN);
+        }
+
+        if (!refreshTokenService.matchesRefreshTokenHash(savedRefreshTokenHash, refreshToken)) {
+            refreshTokenService.deleteRefreshToken(userId);
             throw new BusinessException(ErrorType.INVALID_TOKEN);
         }
 
