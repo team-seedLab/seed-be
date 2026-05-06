@@ -26,7 +26,7 @@ services:
         condition: service_healthy
 
   seed-cache-prod-server:
-    image: redis
+    image: redis:7.2-alpine
     container_name: seed-cache-prod-server
     restart: always
     ports:
