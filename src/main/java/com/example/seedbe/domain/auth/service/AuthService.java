@@ -27,7 +27,7 @@ public class AuthService {
 
     @Transactional
     public void reissueToken(String refreshToken, HttpServletResponse response, Boolean isSecure) {
-        if (!jwtProvider.validateToken(refreshToken)) {
+        if (!jwtProvider.validateRefreshToken(refreshToken)) {
             throw new BusinessException(ErrorType.INVALID_TOKEN);
         }
 
