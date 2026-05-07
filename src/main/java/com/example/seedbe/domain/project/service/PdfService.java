@@ -11,13 +11,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class PdfService {
     private static final int MAX_FILE_COUNT = 3;
-    private static final String HORIZONTAL_WHITESPACE_REGEX = "[ \\t\\x0B\\f]+";
+    private static final String HORIZONTAL_WHITESPACE = "[ \\t]+";
+    private static final String VERTICAL_WHITESPACE = "(\\r\\n|\\r|\\n)+";
 
     public PdfParseResult parse(List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
@@ -71,11 +71,8 @@ public class PdfService {
 
     private String normalizeText(String text) {
         // 줄바꿈은 문단/목록 구조이므로 유지하고, 같은 줄 안의 과도한 공백만 줄인다.
-        return text.replace("\r\n", "\n")
-                .replace('\r', '\n')
-                .lines()
-                .map(line -> line.replaceAll(HORIZONTAL_WHITESPACE_REGEX, " ").trim())
-                .collect(Collectors.joining("\n"))
+        return text.replaceAll(HORIZONTAL_WHITESPACE, " ")
+                .replaceAll(VERTICAL_WHITESPACE, "\n")
                 .trim();
     }
 
