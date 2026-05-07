@@ -75,7 +75,7 @@ public class TesseractOcrClient {
                 "-l",
                 TESSERACT_LANGUAGE,
                 "--psm",
-                "6"
+                "3"
         ).redirectErrorStream(true)
                 .redirectOutput(logPath.toFile())
                 .start();
