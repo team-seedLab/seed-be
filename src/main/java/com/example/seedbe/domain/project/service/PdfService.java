@@ -2,9 +2,10 @@ package com.example.seedbe.domain.project.service;
 
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
+import com.example.seedbe.domain.project.component.pdf.PdfDocumentTextExtractor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,10 +15,11 @@ import java.util.List;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PdfService {
     private static final int MAX_FILE_COUNT = 3;
-    private static final String HORIZONTAL_WHITESPACE = "[ \\t]+";
-    private static final String VERTICAL_WHITESPACE = "(\\r\\n|\\r|\\n)+";
+
+    private final PdfDocumentTextExtractor pdfDocumentTextExtractor;
 
     public PdfParseResult parse(List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
@@ -54,26 +56,17 @@ public class PdfService {
         try (InputStream inputStream = file.getInputStream();
              PDDocument document = PDDocument.load(inputStream)){
 
-            PDFTextStripper pdfStripper = new PDFTextStripper();
-            String text = pdfStripper.getText(document);
-
-            if (text == null || text.trim().isEmpty()) {
-                log.warn("이미지 PDF 의심: 텍스트 추출 불가");
-                return ""; // 에러 던지는 대신 빈칸 리턴 (유저 텍스트로 커버 가능하게)
+            String text = pdfDocumentTextExtractor.extract(document);
+            if (text.isBlank()) {
+                log.warn("PDF에서 분석 가능한 텍스트를 추출하지 못했습니다.");
+                return "";
             }
 
-            return normalizeText(text);
+            return text;
         } catch (IOException e) {
             log.error("PDF 파싱 에러", e);
             throw new BusinessException(ErrorType.PDF_PARSING_FAILED);
         }
-    }
-
-    private String normalizeText(String text) {
-        // 줄바꿈은 문단/목록 구조이므로 유지하고, 같은 줄 안의 과도한 공백만 줄인다.
-        return text.replaceAll(HORIZONTAL_WHITESPACE, " ")
-                .replaceAll(VERTICAL_WHITESPACE, "\n")
-                .trim();
     }
 
     public record PdfParseResult(String text) {

@@ -9,6 +9,13 @@ ENV LC_ALL=C.UTF-8
 
 WORKDIR /app
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        tesseract-ocr-kor && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN groupadd -r ${GROUP} && \
     useradd -r -g ${GROUP} -s /bin/false ${USER}
 
