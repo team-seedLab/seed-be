@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -24,37 +25,51 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ProjectService {
     private final ProjectValidator projectValidator;
     private final ProjectRepository projectRepository;
     private final ProjectStepLogRepository stepLogRepository;
     private final PdfService pdfService;
     private final AIService aiService;
+    private final TransactionTemplate transactionTemplate;
 
+    @Transactional(readOnly = true)
     public Page<ProjectListResponse> getProjects(UUID userId, ProjectStatus status, Pageable pageable) {
         Page<Project> projectPage = projectRepository.findByUserIdAndStatus(userId, status, pageable);
         return projectPage.map(ProjectListResponse::from);
     }
 
+    @Transactional(readOnly = true)
     public ProjectDetailResponse getProjectDetails(UUID userId, UUID projectId) {
         Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
         List<ProjectStepLog> stepLogs = stepLogRepository.findByProjectOrderByCreatedAtAsc(project);
         return ProjectDetailResponse.of(project, stepLogs);
     }
 
-    @Transactional
     public ProjectDetailResponse createProject(User user, ProjectCreateRequest projectCreateRequest) {
-        // pdf 텍스트화
-        String finalPdfText = pdfService.combineTexts(projectCreateRequest.files());
+        // PDF parsing과 Gemini 호출은 DB transaction 밖에서 먼저 끝낸다.
+        PdfService.PdfParseResult pdfParseResult = pdfService.parse(projectCreateRequest.files());
+        String userIntent = projectCreateRequest.userIntent();
 
-        if (finalPdfText.isEmpty() && projectCreateRequest.userIntent().isBlank()) {
+        if (!pdfParseResult.hasExtractedText() && (userIntent == null || userIntent.isBlank())) {
             throw new BusinessException(ErrorType.NO_CONTENT_TO_ANALYZE);
         }
 
-        // ai를 활용한 프롬프트 변수추출
-        Map<String, Object> extractedVariables = aiService.analyzeToJSON(finalPdfText, projectCreateRequest.userIntent(), projectCreateRequest.roadmapType());
+        Map<String, Object> extractedVariables = aiService.analyzeToJSON(
+                pdfParseResult.text(),
+                userIntent,
+                projectCreateRequest.roadmapType()
+        );
 
+        // 외부 I/O가 끝난 뒤, 실제 DB write 구간만 짧게 transaction으로 묶는다.
+        return transactionTemplate.execute(status -> saveProject(user, projectCreateRequest, extractedVariables));
+    }
+
+    private ProjectDetailResponse saveProject(
+            User user,
+            ProjectCreateRequest projectCreateRequest,
+            Map<String, Object> extractedVariables
+    ) {
         Project project = Project.builder()
                 .user(user)
                 .title(projectCreateRequest.title())
