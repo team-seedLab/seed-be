@@ -16,10 +16,12 @@ import java.util.List;
 @Service
 public class PdfService {
     private static final int MAX_FILE_COUNT = 3;
+    private static final String HORIZONTAL_WHITESPACE = "[ \\t]+";
+    private static final String VERTICAL_WHITESPACE = "(\\r\\n|\\r|\\n)+";
 
-    public String combineTexts(List<MultipartFile> files) {
+    public PdfParseResult parse(List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
-            return "";
+            return PdfParseResult.empty();
         }
 
         if (files.size() > MAX_FILE_COUNT) {
@@ -32,6 +34,12 @@ public class PdfService {
         for (MultipartFile file : files) {
             String text = extractTextFromPDF(file);
 
+            // 이미지 기반 PDF처럼 텍스트 레이어가 없으면 문서 마커를 붙이지 않는다.
+            if (text.isBlank()) {
+                documentCount++;
+                continue;
+            }
+
             combinedPdfText.append("[문서 ").append(documentCount).append(" 시작]\n")
                     .append(text).append("\n")
                     .append("[문서 ").append(documentCount).append(" 끝]\n\n");
@@ -39,7 +47,7 @@ public class PdfService {
             documentCount++;
         }
 
-        return combinedPdfText.toString();
+        return new PdfParseResult(combinedPdfText.toString().trim());
     }
 
     public String extractTextFromPDF(MultipartFile file) {
@@ -54,10 +62,27 @@ public class PdfService {
                 return ""; // 에러 던지는 대신 빈칸 리턴 (유저 텍스트로 커버 가능하게)
             }
 
-            return text.trim();
+            return normalizeText(text);
         } catch (IOException e) {
             log.error("PDF 파싱 에러", e);
             throw new BusinessException(ErrorType.PDF_PARSING_FAILED);
+        }
+    }
+
+    private String normalizeText(String text) {
+        // 줄바꿈은 문단/목록 구조이므로 유지하고, 같은 줄 안의 과도한 공백만 줄인다.
+        return text.replaceAll(HORIZONTAL_WHITESPACE, " ")
+                .replaceAll(VERTICAL_WHITESPACE, "\n")
+                .trim();
+    }
+
+    public record PdfParseResult(String text) {
+        public static PdfParseResult empty() {
+            return new PdfParseResult("");
+        }
+
+        public boolean hasExtractedText() {
+            return !text.isBlank();
         }
     }
 }
