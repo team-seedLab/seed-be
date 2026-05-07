@@ -22,6 +22,8 @@ public class PdfDocumentTextExtractor {
         PDFTextStripper pdfStripper = new PDFTextStripper();
         PDFRenderer pdfRenderer = new PDFRenderer(document);
         StringBuilder documentText = new StringBuilder();
+
+        pdfStripper.setSortByPosition(true);
         int ocrPageCount = 0;
 
         for (int pageIndex = 0; pageIndex < document.getNumberOfPages(); pageIndex++) {
