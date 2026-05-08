@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ProjectRepository extends JpaRepository<Project, UUID> {
@@ -22,4 +23,6 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
             @Param("status") ProjectStatus status,
             Pageable pageable
     );
+
+    Optional<Project> findByProjectIdAndUserUserId(UUID projectId, UUID userId);
 }

@@ -11,6 +11,7 @@ import com.example.seedbe.domain.prompt.repository.PromptTemplateRepository;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,16 +33,17 @@ public class ProjectStepService {
         Project project = context.project();
         RoadmapStep requestedStep = context.step();
 
-        PromptTemplate template = templateRepository.findByRoadmapTypeAndRoadmapStepAndIsActiveTrue(
-                        project.getRoadmapType(), requestedStep)
-                .orElseThrow(() -> new BusinessException(ErrorType.PROMPT_TEMPLATE_NOT_FOUND));
-
-        Optional<ProjectStepLog> existingLog = stepLogRepository.findByProjectAndRoadmapStep(project, requestedStep);
+        Optional<ProjectStepLog> existingLog = stepLogRepository.findByProjectAndRoadmapStepWithPromptTemplate(
+                project, requestedStep);
 
         // 존재하면 그대로 DTO로 반환
         if (existingLog.isPresent()) {
             return ProjectPromptStepResponse.from(existingLog.get());
         }
+
+        PromptTemplate template = templateRepository.findByRoadmapTypeAndRoadmapStepAndIsActiveTrue(
+                        project.getRoadmapType(), requestedStep)
+                .orElseThrow(() -> new BusinessException(ErrorType.PROMPT_TEMPLATE_NOT_FOUND));
 
         // 존재하지 않으면 새로 생성후 DTO로 반환
         String finalActionPrompt = replaceVariables(template.getActionPrompt(), project.getInitialContext());
@@ -53,7 +55,14 @@ public class ProjectStepService {
                 .providedPromptSnapshot(finalActionPrompt)
                 .build();
 
-        stepLogRepository.save(newLog);
+        try {
+            stepLogRepository.saveAndFlush(newLog);
+        } catch (DataIntegrityViolationException e) {
+            ProjectStepLog concurrentLog = stepLogRepository.findByProjectAndRoadmapStepWithPromptTemplate(
+                            project, requestedStep)
+                    .orElseThrow(() -> e);
+            return ProjectPromptStepResponse.from(concurrentLog);
+        }
 
         return ProjectPromptStepResponse.from(newLog);
     }

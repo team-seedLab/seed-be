@@ -3,11 +3,15 @@ package com.example.seedbe.domain.project.service;
 import com.example.seedbe.domain.project.component.ProjectValidator;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
+import com.example.seedbe.domain.project.dto.ProjectSummaryResponse;
 import com.example.seedbe.domain.project.entity.Project;
+import com.example.seedbe.domain.project.entity.ProjectStepLog;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
+import com.example.seedbe.domain.project.enums.RoadmapStep;
 import com.example.seedbe.domain.project.enums.RoadmapType;
 import com.example.seedbe.domain.project.repository.ProjectRepository;
 import com.example.seedbe.domain.project.repository.ProjectStepLogRepository;
+import com.example.seedbe.domain.prompt.entity.PromptTemplate;
 import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.domain.user.enums.Role;
 import com.example.seedbe.global.exception.BusinessException;
@@ -22,11 +26,14 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -105,7 +112,7 @@ class ProjectServiceTest {
         });
         when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ProjectDetailResponse response = projectService.createProject(createUser(), request);
+        ProjectSummaryResponse response = projectService.createProject(createUser(), request);
 
         ArgumentCaptor<Project> projectCaptor = ArgumentCaptor.forClass(Project.class);
         verify(transactionTemplate).execute(any());
@@ -117,6 +124,39 @@ class ProjectServiceTest {
         assertThat(savedProject.getStatus()).isEqualTo(ProjectStatus.IN_PROGRESS);
         assertThat(savedProject.getInitialContext()).isEqualTo(extractedVariables);
         assertThat(response.title()).isEqualTo("title");
+    }
+
+    @Test
+    @DisplayName("프로젝트 상세 조회는 step log와 promptTemplate을 함께 조회한다.")
+    void getProjectDetailsLoadsStepLogsWithPromptTemplate() {
+        ProjectService projectService = createProjectService();
+        UUID userId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        Project project = Project.builder()
+                .title("title")
+                .roadmapType(RoadmapType.REPORT)
+                .status(ProjectStatus.IN_PROGRESS)
+                .initialContext(Map.of())
+                .build();
+        PromptTemplate promptTemplate = mock(PromptTemplate.class);
+        ProjectStepLog stepLog = ProjectStepLog.builder()
+                .project(project)
+                .promptTemplate(promptTemplate)
+                .roadmapStep(RoadmapStep.CONSTRAINT_ANALYSIS)
+                .providedPromptSnapshot("prompt")
+                .userSubmittedResult("result")
+                .build();
+
+        when(promptTemplate.getFormatPrompt()).thenReturn("format");
+        when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
+        when(stepLogRepository.findByProjectWithPromptTemplateOrderByCreatedAtAsc(project))
+                .thenReturn(List.of(stepLog));
+
+        ProjectDetailResponse response = projectService.getProjectDetails(userId, projectId);
+
+        assertThat(response.stepResponses()).hasSize(1);
+        assertThat(response.stepResponses().getFirst().formatPrompt()).isEqualTo("format");
+        verify(stepLogRepository).findByProjectWithPromptTemplateOrderByCreatedAtAsc(project);
     }
 
     private ProjectService createProjectService() {
