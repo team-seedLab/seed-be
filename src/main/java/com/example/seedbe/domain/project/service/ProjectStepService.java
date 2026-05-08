@@ -26,7 +26,6 @@ public class ProjectStepService {
     private final PromptTemplateRepository templateRepository;
     private final ProjectStepLogRepository stepLogRepository;
 
-    @Transactional
     public ProjectPromptStepResponse createAndSavePrompt(UUID userId, UUID projectId, String stepCodeStr) {
         // 유효성 검사
         ValidatedContext context = validateAndGetContext(userId, projectId, stepCodeStr);

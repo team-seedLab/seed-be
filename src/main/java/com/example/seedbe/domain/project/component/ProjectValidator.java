@@ -15,12 +15,13 @@ public class ProjectValidator {
     private final ProjectRepository projectRepository;
 
     public Project getProjectWithOwnershipCheck(UUID userId, UUID projectId) {
-        return projectRepository.findByProjectIdAndUserUserId(projectId, userId)
-                .orElseThrow(() -> {
-                    if (projectRepository.existsById(projectId)) {
-                        return new BusinessException(ErrorType.FORBIDDEN_ACCESS);
-                    }
-                    return new BusinessException(ErrorType.PROJECT_NOT_FOUND);
-                });
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorType.PROJECT_NOT_FOUND));
+
+        if (!project.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorType.FORBIDDEN_ACCESS);
+        }
+
+        return project;
     }
 }
