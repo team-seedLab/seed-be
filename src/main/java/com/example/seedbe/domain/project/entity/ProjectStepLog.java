@@ -12,7 +12,15 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Entity
-@Table(name = "project_step_log")
+@Table(
+        name = "project_step_log",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_project_step_log_project_roadmap_step",
+                        columnNames = {"project_id", "roadmap_step"}
+                )
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ProjectStepLog extends BaseTimeEntity {

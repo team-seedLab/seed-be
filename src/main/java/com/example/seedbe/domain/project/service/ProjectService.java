@@ -3,7 +3,8 @@ package com.example.seedbe.domain.project.service;
 import com.example.seedbe.domain.project.component.ProjectValidator;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
-import com.example.seedbe.domain.project.dto.ProjectListResponse;
+import com.example.seedbe.domain.project.dto.ProjectPromptStepResponse;
+import com.example.seedbe.domain.project.dto.ProjectSummaryResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.entity.ProjectStepLog;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
@@ -34,19 +35,26 @@ public class ProjectService {
     private final TransactionTemplate transactionTemplate;
 
     @Transactional(readOnly = true)
-    public Page<ProjectListResponse> getProjects(UUID userId, ProjectStatus status, Pageable pageable) {
+    public Page<ProjectSummaryResponse> getProjects(UUID userId, ProjectStatus status, Pageable pageable) {
         Page<Project> projectPage = projectRepository.findByUserIdAndStatus(userId, status, pageable);
-        return projectPage.map(ProjectListResponse::from);
+        return projectPage.map(ProjectSummaryResponse::from);
     }
 
     @Transactional(readOnly = true)
     public ProjectDetailResponse getProjectDetails(UUID userId, UUID projectId) {
         Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
-        List<ProjectStepLog> stepLogs = stepLogRepository.findByProjectOrderByCreatedAtAsc(project);
-        return ProjectDetailResponse.of(project, stepLogs);
+
+        ProjectSummaryResponse summary = ProjectSummaryResponse.from(project);
+
+        List<ProjectStepLog> stepLogs = stepLogRepository.findByProjectWithPromptTemplateOrderByCreatedAtAsc(project);
+        List<ProjectPromptStepResponse> stepResponses = stepLogs.stream()
+                .map(ProjectPromptStepResponse::from)
+                .toList();
+
+        return ProjectDetailResponse.of(summary, stepResponses);
     }
 
-    public ProjectDetailResponse createProject(User user, ProjectCreateRequest projectCreateRequest) {
+    public ProjectSummaryResponse createProject(User user, ProjectCreateRequest projectCreateRequest) {
         // PDF parsing과 Gemini 호출은 DB transaction 밖에서 먼저 끝낸다.
         PdfService.PdfParseResult pdfParseResult = pdfService.parse(projectCreateRequest.files());
         String userIntent = projectCreateRequest.userIntent();
@@ -65,7 +73,7 @@ public class ProjectService {
         return transactionTemplate.execute(status -> saveProject(user, projectCreateRequest, extractedVariables));
     }
 
-    private ProjectDetailResponse saveProject(
+    private ProjectSummaryResponse saveProject(
             User user,
             ProjectCreateRequest projectCreateRequest,
             Map<String, Object> extractedVariables
@@ -79,7 +87,7 @@ public class ProjectService {
                 .build();
 
         Project savedProject = projectRepository.save(project);
-        return ProjectDetailResponse.from(savedProject);
+        return ProjectSummaryResponse.from(savedProject);
     }
 
     @Transactional
