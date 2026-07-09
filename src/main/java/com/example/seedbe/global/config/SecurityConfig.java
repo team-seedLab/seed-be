@@ -62,6 +62,16 @@ public class SecurityConfig {
 
                             response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
                         })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            ErrorType errorType = ErrorType.FORBIDDEN_ACCESS;
+
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.setStatus(errorType.getHttpStatus().value());
+
+                            ApiResponse<?> apiResponse = ApiResponse.fail(errorType.getCode(), errorType.getMessage());
+
+                            response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
+                        })
                 )
                 .oauth2Login(oauth2 -> oauth2
                         // 소셜 로그인 성공 후 유저 정보를 가져올 때의 설정
@@ -75,6 +85,16 @@ public class SecurityConfig {
                 .authorizeHttpRequests((auth) -> auth
                         .requestMatchers("/oauth2/**", "/api/auth/reissue", "/api/auth/mentor/login", "/api/test/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
+
+                        .requestMatchers("/api/mentor/**").hasAuthority("ROLE_MENTOR")
+
+                        .requestMatchers(
+                                "/api/users/**",
+                                "/api/projects/**",
+                                "/api/pdfs/**",
+                                "/api/prompts/**"
+                        ).hasAuthority("ROLE_USER")
+
                         .anyRequest().authenticated()
                 );
         return http.build();
