@@ -1,5 +1,6 @@
 package com.example.seedbe.domain.auth.controller;
 
+import com.example.seedbe.domain.auth.dto.MentorLoginRequest;
 import com.example.seedbe.domain.auth.service.AuthService;
 import com.example.seedbe.global.common.response.ApiResponse;
 import com.example.seedbe.global.exception.BusinessException;
@@ -10,13 +11,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 
@@ -27,6 +26,22 @@ import java.util.Arrays;
 public class AuthController {
     private final AuthService authService;
     private final Environment environment;
+
+    @Operation(
+            summary = "멘토 일반 로그인",
+            description = "멘토 계정으로 이메일/비밀번호 로그인을 합니다."
+    )
+    @PostMapping("/mentor/login")
+    public ApiResponse<String> mentorLogin(
+            @Valid @RequestBody MentorLoginRequest request,
+            HttpServletResponse response
+    ) {
+        boolean isSecure = Arrays.asList(environment.getActiveProfiles()).contains("prod");
+
+        authService.mentorLogin(request, response, isSecure);
+
+        return ApiResponse.success("멘토 로그인에 성공했습니다.");
+    }
 
     @Operation(
             summary = "토큰 재발급",
