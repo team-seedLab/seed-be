@@ -15,6 +15,7 @@ public enum ErrorType {
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A001", "유효하지 않은 토큰입니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "A002", "로그인이 필요합니다."),
     FORBIDDEN_ACCESS(HttpStatus.FORBIDDEN, "A003", "해당 리소스에 접근할 권한이 없습니다."),
+    INVALID_LOGIN(HttpStatus.UNAUTHORIZED, "A001", "이메일 또는 비밀번호가 올바르지 않습니다."),
 
     // [User] 유저
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "유저가 없습니다"),
