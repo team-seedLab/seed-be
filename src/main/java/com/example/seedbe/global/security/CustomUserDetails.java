@@ -34,7 +34,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
     // 일반 로그인용
     @Override
     public String getUsername() {
-        return user.getEmail();
+        return user.getUserId().toString();
     }
 
     @Override
