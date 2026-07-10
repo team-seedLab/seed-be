@@ -37,6 +37,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                         .provider(registrationId)
                         .providerId(userInfo.providerId())
                         .email(userInfo.email())
+                        .password(null)
                         .nickname(userInfo.nickname())
                         .profileUrl(userInfo.profileUrl())
                         .role(Role.ROLE_USER)

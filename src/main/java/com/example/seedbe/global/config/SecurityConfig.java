@@ -8,10 +8,14 @@ import com.example.seedbe.global.security.oauth2.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -58,6 +62,16 @@ public class SecurityConfig {
 
                             response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
                         })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            ErrorType errorType = ErrorType.FORBIDDEN_ACCESS;
+
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.setStatus(errorType.getHttpStatus().value());
+
+                            ApiResponse<?> apiResponse = ApiResponse.fail(errorType.getCode(), errorType.getMessage());
+
+                            response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
+                        })
                 )
                 .oauth2Login(oauth2 -> oauth2
                         // 소셜 로그인 성공 후 유저 정보를 가져올 때의 설정
@@ -69,11 +83,31 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/oauth2/**", "/api/auth/reissue", "/api/test/**").permitAll()
+                        .requestMatchers("/oauth2/**", "/api/auth/reissue", "/api/auth/mentor/login", "/api/test/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
+
+                        .requestMatchers("/api/mentor/**").hasAuthority("ROLE_MENTOR")
+
+                        .requestMatchers(
+                                "/api/users/**",
+                                "/api/projects/**",
+                                "/api/pdfs/**",
+                                "/api/prompts/**"
+                        ).hasAuthority("ROLE_USER")
+
                         .anyRequest().authenticated()
                 );
         return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
     }
 
     // CORS 설정

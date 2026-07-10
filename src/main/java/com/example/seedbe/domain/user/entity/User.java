@@ -11,7 +11,13 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Entity
-@Table(name = "users")
+@Table(
+        name = "users",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
+                @UniqueConstraint(name = "uk_users_provider_provider_id", columnNames = {"provider", "provider_id"})
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA 기본 생성자 (안전하게 protected)
 public class User extends BaseTimeEntity {
@@ -21,12 +27,15 @@ public class User extends BaseTimeEntity {
     private UUID userId;
 
     @Column(nullable = false)
-    private String provider; // 제공자: google, kakao
+    private String provider; // GOOGLE, KAKAO, LOCAL
 
-    @Column(name = "provider_id", nullable = false)
-    private String providerId; // 소셜 고유 식별자
+    @Column(name = "provider_id")
+    private String providerId; // OAuth 고유 식별자, LOCAL은 null
 
+    @Column(nullable = false)
     private String email;
+
+    private String password;
 
     private String nickname;
 
@@ -37,10 +46,11 @@ public class User extends BaseTimeEntity {
     private String profileUrl;
 
     @Builder
-    public User(String provider, String providerId, String email, String nickname, Role role, String profileUrl) {
+    public User(String provider, String providerId, String email, String password, String nickname, Role role, String profileUrl) {
         this.provider = provider;
         this.providerId = providerId;
         this.email = email;
+        this.password = password;
         this.nickname = nickname;
         this.role = role;
         this.profileUrl = profileUrl;

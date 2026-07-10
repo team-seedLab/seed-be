@@ -10,4 +10,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     // 소셜 로그인 시, 이미 가입된 유저인지 확인하기 위한 쿼리 메서드
     Optional<User> findByProviderAndProviderId(String provider, String providerId);
+
+    Optional<User> findByEmail(String email);
 }

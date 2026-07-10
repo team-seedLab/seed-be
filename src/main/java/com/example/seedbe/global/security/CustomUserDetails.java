@@ -33,19 +33,29 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
 
     // 일반 로그인용
     @Override
-    public String getPassword() { return null; }
+    public String getUsername() {
+        return user.getUserId().toString();
+    }
 
     @Override
-    public String getUsername() { return user.getUserId().toString(); }
+    public String getPassword() {
+        return user.getPassword();
+    }
 
-    public User getUser() { return user; }
+    public User getUser() {
+        return user;
+    }
 
     // 소셜 로그인용
     @Override
-    public Map<String, Object> getAttributes() { return attributes; }
+    public Map<String, Object> getAttributes() {
+        return attributes;
+    }
 
     @Override
-    public String getName() { return user.getUserId().toString(); }
+    public String getName() {
+        return user.getUserId().toString();
+    }
 
     // 아래 4개는 계정 만료, 잠김 여부인데 일단 다 true로 세팅
     @Override

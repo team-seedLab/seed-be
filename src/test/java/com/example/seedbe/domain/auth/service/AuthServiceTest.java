@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.AuthenticationManager;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -30,6 +31,9 @@ class AuthServiceTest {
     private JwtProvider jwtProvider;
 
     @Mock
+    private AuthenticationManager authenticationManager;
+
+    @Mock
     private RefreshTokenService refreshTokenService;
 
     @Mock
@@ -39,7 +43,7 @@ class AuthServiceTest {
     @DisplayName("정상 refresh token이면 새 access/refresh token을 발급하고 refresh token hash를 저장한다.")
     void reissueTokenSucceedsWithValidRefreshToken() {
         JwtProperties jwtProperties = new JwtProperties("secret", 3_600_000L, 1_209_600_000L);
-        AuthService authService = new AuthService(jwtProvider, refreshTokenService, userRepository, jwtProperties);
+        AuthService authService = new AuthService(authenticationManager, jwtProvider, refreshTokenService, userRepository, jwtProperties);
 
         UUID userId = UUID.randomUUID();
         String userIdString = userId.toString();
@@ -78,7 +82,7 @@ class AuthServiceTest {
     @DisplayName("저장 hash와 요청 refresh token hash가 불일치하면 reuse 의심으로 Redis refresh token을 삭제한다.")
     void reissueTokenDeletesRefreshTokenWhenHashDoesNotMatch() {
         JwtProperties jwtProperties = new JwtProperties("secret", 3_600_000L, 1_209_600_000L);
-        AuthService authService = new AuthService(jwtProvider, refreshTokenService, userRepository, jwtProperties);
+        AuthService authService = new AuthService(authenticationManager, jwtProvider, refreshTokenService, userRepository, jwtProperties);
 
         UUID userId = UUID.randomUUID();
         String userIdString = userId.toString();
@@ -101,7 +105,7 @@ class AuthServiceTest {
     @DisplayName("refresh token 타입이 아니면 Redis refresh token을 삭제하지 않는다.")
     void reissueTokenDoesNotDeleteRefreshTokenWhenTokenIsNotRefreshToken() {
         JwtProperties jwtProperties = new JwtProperties("secret", 3_600_000L, 1_209_600_000L);
-        AuthService authService = new AuthService(jwtProvider, refreshTokenService, userRepository, jwtProperties);
+        AuthService authService = new AuthService(authenticationManager, jwtProvider, refreshTokenService, userRepository, jwtProperties);
 
         String accessToken = "access-token";
 
