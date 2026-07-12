@@ -3,6 +3,8 @@ package com.example.seedbe.domain.project.controller;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectSummaryResponse;
+import com.example.seedbe.domain.project.dto.ProjectListResponse;
+import com.example.seedbe.domain.project.dto.ProjectStatusCountResponse;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
 import com.example.seedbe.domain.project.service.ProjectService;
 import com.example.seedbe.global.common.response.ApiResponse;
@@ -34,17 +36,24 @@ public class ProjectController {
             description = "로그인한 사용자의 프로젝트 목록을 최신순으로 페이징하여 조회합니다."
     )
     @GetMapping
-    public ApiResponse<PageResponse<ProjectSummaryResponse>> getProjects(
+    public ApiResponse<PageResponse<ProjectListResponse>> getProjects(
             @AuthenticationPrincipal CustomUserDetails user, // 보안 인증 객체 (본인 것만 조회)
             @RequestParam(required = false) ProjectStatus status,
             @PageableDefault(size = 10, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC)
             @ParameterObject Pageable pageable) {
 
-        Page<ProjectSummaryResponse> response = projectService.getProjects(user.getUser().getUserId(), status, pageable);
+        Page<ProjectListResponse> response = projectService.getProjects(user.getUser().getUserId(), status, pageable);
 
-        PageResponse<ProjectSummaryResponse> customPageResponse = PageResponse.of(response);
+        PageResponse<ProjectListResponse> customPageResponse = PageResponse.of(response);
 
         return ApiResponse.success(customPageResponse);
+    }
+
+    @Operation(summary = "프로젝트 상태별 개수 조회 (로그인 필요)")
+    @GetMapping("/status/count")
+    public ApiResponse<ProjectStatusCountResponse> getProjectStatusCounts(
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ApiResponse.success(projectService.getProjectStatusCounts(user.getUser().getUserId()));
     }
 
     @Operation(

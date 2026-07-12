@@ -4,6 +4,8 @@ import com.example.seedbe.domain.project.component.ProjectValidator;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectSummaryResponse;
+import com.example.seedbe.domain.project.dto.ProjectListResponse;
+import com.example.seedbe.domain.project.dto.ProjectStatusCountResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.entity.ProjectStep;
 import com.example.seedbe.domain.project.entity.ProjectStepPrompt;
@@ -28,6 +30,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -131,26 +137,85 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("상세 조회는 prompt와 result를 기존 API 응답 형식으로 반환한다.")
-    void getProjectDetailsReturnsExistingResponseShape() {
+    @DisplayName("상세 조회는 prompt와 result 없이 전체 단계 요약을 반환한다.")
+    void getProjectDetailsReturnsStepSummaries() {
         UUID userId = UUID.randomUUID();
         UUID projectId = UUID.randomUUID();
         Project project = createProject();
-        PromptTemplate template = mock(PromptTemplate.class);
-        when(template.getFormatPrompt()).thenReturn("format");
-        ProjectStep step = ProjectStep.builder().project(project).promptTemplate(template)
+        ProjectStep step = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
                 .roadmapStep(RoadmapStep.CONSTRAINT_ANALYSIS).stepOrder(1).build();
-        step.start(ProjectStepPrompt.builder().step(step).providedPromptSnapshot("prompt").build());
         step.complete(ProjectStepResult.builder().step(step).contentMarkdown("result").build());
         when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
-        when(stepRepository.findStartedStepsWithDetailsOrderByStepOrder(project)).thenReturn(List.of(step));
+        when(stepRepository.findByProjectOrderByStepOrderAsc(project)).thenReturn(List.of(step));
 
         ProjectDetailResponse response = service().getProjectDetails(userId, projectId);
 
-        assertThat(response.stepResponses()).hasSize(1);
-        assertThat(response.stepResponses().getFirst().providedPromptSnapshot()).isEqualTo("prompt");
-        assertThat(response.stepResponses().getFirst().formatPrompt()).isEqualTo("format");
-        assertThat(response.stepResponses().getFirst().userSubmittedResult()).isEqualTo("result");
+        assertThat(response.steps()).hasSize(1);
+        assertThat(response.steps().getFirst().roadmapStep()).isEqualTo(RoadmapStep.CONSTRAINT_ANALYSIS);
+        assertThat(response.completedStepCount()).isEqualTo(1);
+        assertThat(response.progressPercent()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("목록은 IN_PROGRESS 단계를 현재 단계로 우선하고 진행률을 계산한다.")
+    void getProjectsCalculatesCurrentStepAndProgress() {
+        UUID userId = UUID.randomUUID();
+        Project project = createProject();
+        ProjectStep completed = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
+                .roadmapStep(RoadmapStep.CONSTRAINT_ANALYSIS).stepOrder(1).build();
+        completed.complete(ProjectStepResult.builder().step(completed).contentMarkdown("result").build());
+        ProjectStep current = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
+                .roadmapStep(RoadmapStep.ARGUMENT_STRUCTURING).stepOrder(2).build();
+        current.start(ProjectStepPrompt.builder().step(current).providedPromptSnapshot("prompt").build());
+        ProjectStep pending = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
+                .roadmapStep(RoadmapStep.DRAFT_GENERATION).stepOrder(3).build();
+        PageRequest pageable = PageRequest.of(0, 10);
+        when(projectRepository.findByUserIdAndStatus(userId, null, pageable))
+                .thenReturn(new PageImpl<>(List.of(project), pageable, 1));
+        when(stepRepository.findSummariesByProjects(List.of(project)))
+                .thenReturn(List.of(completed, current, pending));
+
+        Page<ProjectListResponse> response = service().getProjects(userId, null, pageable);
+
+        ProjectListResponse item = response.getContent().getFirst();
+        assertThat(item.currentRoadmapStep()).isEqualTo(RoadmapStep.ARGUMENT_STRUCTURING);
+        assertThat(item.currentStepOrder()).isEqualTo(2);
+        assertThat(item.completedStepCount()).isEqualTo(1);
+        assertThat(item.totalStepCount()).isEqualTo(3);
+        assertThat(item.progressPercent()).isEqualTo(33);
+    }
+
+    @Test
+    @DisplayName("모든 단계가 완료되면 마지막 단계를 현재 단계로 반환한다.")
+    void getProjectsUsesLastCompletedStep() {
+        UUID userId = UUID.randomUUID();
+        Project project = createProject();
+        ProjectStep first = completedStep(project, RoadmapStep.CONSTRAINT_ANALYSIS, 1);
+        ProjectStep last = completedStep(project, RoadmapStep.ARGUMENT_STRUCTURING, 2);
+        PageRequest pageable = PageRequest.of(0, 10);
+        when(projectRepository.findByUserIdAndStatus(userId, null, pageable))
+                .thenReturn(new PageImpl<>(List.of(project), pageable, 1));
+        when(stepRepository.findSummariesByProjects(List.of(project))).thenReturn(List.of(first, last));
+
+        ProjectListResponse item = service().getProjects(userId, null, pageable).getContent().getFirst();
+
+        assertThat(item.currentRoadmapStep()).isEqualTo(RoadmapStep.ARGUMENT_STRUCTURING);
+        assertThat(item.currentStepOrder()).isEqualTo(2);
+        assertThat(item.progressPercent()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("프로젝트가 없으면 빈 목록과 0 상태 개수를 반환한다.")
+    void returnsEmptyProjectsAndZeroCounts() {
+        UUID userId = UUID.randomUUID();
+        PageRequest pageable = PageRequest.of(0, 10);
+        when(projectRepository.findByUserIdAndStatus(userId, null, pageable)).thenReturn(Page.empty(pageable));
+        when(projectRepository.countByStatusForUser(userId))
+                .thenReturn(new ProjectStatusCountResponse(0, 0, 0));
+
+        assertThat(service().getProjects(userId, null, pageable)).isEmpty();
+        assertThat(service().getProjectStatusCounts(userId).totalCount()).isZero();
+        verify(stepRepository, never()).findSummariesByProjects(any());
     }
 
     @Test
@@ -176,8 +241,17 @@ class ProjectServiceTest {
     }
 
     private Project createProject() {
-        return Project.builder().title("title").roadmapType(RoadmapType.REPORT)
+        Project project = Project.builder().title("title").roadmapType(RoadmapType.REPORT)
                 .status(ProjectStatus.IN_PROGRESS).initialContext(Map.of()).build();
+        ReflectionTestUtils.setField(project, "projectId", UUID.randomUUID());
+        return project;
+    }
+
+    private ProjectStep completedStep(Project project, RoadmapStep roadmapStep, int stepOrder) {
+        ProjectStep step = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
+                .roadmapStep(roadmapStep).stepOrder(stepOrder).build();
+        step.complete(ProjectStepResult.builder().step(step).contentMarkdown("result").build());
+        return step;
     }
 
     private User createUser() {

@@ -16,13 +16,12 @@ public interface ProjectStepRepository extends JpaRepository<ProjectStep, UUID> 
 
     @Query("""
         SELECT ps FROM ProjectStep ps
-        JOIN FETCH ps.promptTemplate
-        JOIN FETCH ps.prompt
-        LEFT JOIN FETCH ps.result
-        WHERE ps.project = :project
-        ORDER BY ps.stepOrder ASC
+        WHERE ps.project IN :projects
+        ORDER BY ps.project.projectId ASC, ps.stepOrder ASC
     """)
-    List<ProjectStep> findStartedStepsWithDetailsOrderByStepOrder(@Param("project") Project project);
+    List<ProjectStep> findSummariesByProjects(@Param("projects") List<Project> projects);
+
+    List<ProjectStep> findByProjectOrderByStepOrderAsc(Project project);
 
     @Query("""
         SELECT ps FROM ProjectStep ps

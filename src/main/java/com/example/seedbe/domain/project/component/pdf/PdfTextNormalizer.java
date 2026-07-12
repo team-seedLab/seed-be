@@ -20,6 +20,16 @@ public class PdfTextNormalizer {
 
     public String normalizeAndLimit(String text, int maxLength) {
         String normalized = normalize(text);
-        return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength);
+        if (normalized.length() <= maxLength) {
+            return normalized;
+        }
+
+        int endIndex = maxLength;
+        if (endIndex > 0
+                && Character.isHighSurrogate(normalized.charAt(endIndex - 1))
+                && Character.isLowSurrogate(normalized.charAt(endIndex))) {
+            endIndex--;
+        }
+        return normalized.substring(0, endIndex);
     }
 }

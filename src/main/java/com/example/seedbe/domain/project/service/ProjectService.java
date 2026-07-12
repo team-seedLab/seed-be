@@ -3,10 +3,13 @@ package com.example.seedbe.domain.project.service;
 import com.example.seedbe.domain.project.component.ProjectValidator;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
-import com.example.seedbe.domain.project.dto.ProjectPromptStepResponse;
+import com.example.seedbe.domain.project.dto.ProjectListResponse;
+import com.example.seedbe.domain.project.dto.ProjectStatusCountResponse;
+import com.example.seedbe.domain.project.dto.ProjectStepSummaryResponse;
 import com.example.seedbe.domain.project.dto.ProjectSummaryResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.entity.ProjectStep;
+import com.example.seedbe.domain.project.enums.RoadmapStep;
 import com.example.seedbe.domain.project.enums.ProjectStepStatus;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
 import com.example.seedbe.domain.project.repository.ProjectRepository;
@@ -18,14 +21,18 @@ import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Service
@@ -40,23 +47,68 @@ public class ProjectService {
     private final TransactionTemplate transactionTemplate;
 
     @Transactional(readOnly = true)
-    public Page<ProjectSummaryResponse> getProjects(UUID userId, ProjectStatus status, Pageable pageable) {
+    public Page<ProjectListResponse> getProjects(UUID userId, ProjectStatus status, Pageable pageable) {
         Page<Project> projectPage = projectRepository.findByUserIdAndStatus(userId, status, pageable);
-        return projectPage.map(ProjectSummaryResponse::from);
+        List<Project> projects = projectPage.getContent();
+        if (projects.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, projectPage.getTotalElements());
+        }
+
+        Map<UUID, List<ProjectStep>> stepsByProjectId = stepRepository.findSummariesByProjects(projects).stream()
+                .collect(Collectors.groupingBy(step -> step.getProject().getProjectId()));
+        return projectPage.map(project -> {
+            ProjectProgress progress = calculateProgress(
+                    stepsByProjectId.getOrDefault(project.getProjectId(), Collections.emptyList()));
+            return ProjectListResponse.of(project, progress.currentRoadmapStep(), progress.currentStepOrder(),
+                    progress.totalStepCount(), progress.completedStepCount(), progress.progressPercent());
+        });
     }
 
     @Transactional(readOnly = true)
     public ProjectDetailResponse getProjectDetails(UUID userId, UUID projectId) {
         Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
 
-        ProjectSummaryResponse summary = ProjectSummaryResponse.from(project);
-
-        List<ProjectStep> steps = stepRepository.findStartedStepsWithDetailsOrderByStepOrder(project);
-        List<ProjectPromptStepResponse> stepResponses = steps.stream()
-                .map(ProjectPromptStepResponse::from)
+        List<ProjectStep> steps = stepRepository.findByProjectOrderByStepOrderAsc(project);
+        ProjectProgress progress = calculateProgress(steps);
+        List<ProjectStepSummaryResponse> stepResponses = steps.stream()
+                .map(ProjectStepSummaryResponse::from)
                 .toList();
 
-        return ProjectDetailResponse.of(summary, stepResponses);
+        return ProjectDetailResponse.of(project, progress.currentRoadmapStep(), progress.currentStepOrder(),
+                progress.totalStepCount(), progress.completedStepCount(), progress.progressPercent(), stepResponses);
+    }
+
+    @Transactional(readOnly = true)
+    public ProjectStatusCountResponse getProjectStatusCounts(UUID userId) {
+        return projectRepository.countByStatusForUser(userId);
+    }
+
+    private ProjectProgress calculateProgress(List<ProjectStep> steps) {
+        List<ProjectStep> orderedSteps = steps.stream()
+                .sorted(Comparator.comparing(ProjectStep::getStepOrder))
+                .toList();
+        int total = orderedSteps.size();
+        int completed = (int) orderedSteps.stream()
+                .filter(step -> step.getStatus() == ProjectStepStatus.COMPLETED)
+                .count();
+        ProjectStep current = orderedSteps.stream()
+                .filter(step -> step.getStatus() == ProjectStepStatus.IN_PROGRESS)
+                .findFirst()
+                .or(() -> orderedSteps.stream()
+                        .filter(step -> step.getStatus() == ProjectStepStatus.PENDING)
+                        .findFirst())
+                .orElseGet(() -> orderedSteps.isEmpty() ? null : orderedSteps.getLast());
+        return new ProjectProgress(
+                current == null ? null : current.getRoadmapStep(),
+                current == null ? null : current.getStepOrder(),
+                total,
+                completed,
+                total == 0 ? 0 : completed * 100 / total
+        );
+    }
+
+    private record ProjectProgress(RoadmapStep currentRoadmapStep, Integer currentStepOrder,
+                                   int totalStepCount, int completedStepCount, int progressPercent) {
     }
 
     public ProjectSummaryResponse createProject(User user, ProjectCreateRequest projectCreateRequest) {

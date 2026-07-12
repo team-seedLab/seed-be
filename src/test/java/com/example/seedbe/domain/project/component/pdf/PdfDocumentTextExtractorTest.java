@@ -20,7 +20,8 @@ class PdfDocumentTextExtractorTest {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage();
             document.addPage(page);
-            when(textLayerExtractor.extractPage(document, 1)).thenReturn("");
+            when(textLayerExtractor.extractPage(any(), org.mockito.ArgumentMatchers.eq(document),
+                    org.mockito.ArgumentMatchers.eq(1))).thenReturn("");
             when(imageDetector.hasImage(page)).thenReturn(true);
             when(ocrClient.extractText(any(), org.mockito.ArgumentMatchers.eq(0))).thenReturn("OCR text");
 
@@ -39,7 +40,8 @@ class PdfDocumentTextExtractorTest {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage();
             document.addPage(page);
-            when(textLayerExtractor.extractPage(document, 1)).thenReturn("text layer");
+            when(textLayerExtractor.extractPage(any(), org.mockito.ArgumentMatchers.eq(document),
+                    org.mockito.ArgumentMatchers.eq(1))).thenReturn("text layer");
             when(imageDetector.hasImage(page)).thenReturn(true);
             when(ocrClient.extractText(any(), org.mockito.ArgumentMatchers.eq(0))).thenReturn("chart labels");
 
@@ -60,7 +62,8 @@ class PdfDocumentTextExtractorTest {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage();
             document.addPage(page);
-            when(textLayerExtractor.extractPage(document, 1)).thenReturn("same text");
+            when(textLayerExtractor.extractPage(any(), org.mockito.ArgumentMatchers.eq(document),
+                    org.mockito.ArgumentMatchers.eq(1))).thenReturn("same text");
             when(imageDetector.hasImage(page)).thenReturn(true);
             when(ocrClient.extractText(any(), anyInt())).thenReturn("same text");
 
