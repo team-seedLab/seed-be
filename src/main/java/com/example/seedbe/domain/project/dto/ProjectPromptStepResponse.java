@@ -1,6 +1,6 @@
 package com.example.seedbe.domain.project.dto;
 
-import com.example.seedbe.domain.project.entity.ProjectStepLog;
+import com.example.seedbe.domain.project.entity.ProjectStep;
 
 import java.time.LocalDateTime;
 
@@ -13,15 +13,15 @@ public record ProjectPromptStepResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static ProjectPromptStepResponse from(ProjectStepLog projectStepLog) {
+    public static ProjectPromptStepResponse from(ProjectStep projectStep) {
         return new ProjectPromptStepResponse(
-                projectStepLog.getRoadmapStep().getStepCode(),
-                projectStepLog.getRoadmapStep().getDescription(),
-                projectStepLog.getProvidedPromptSnapshot(),
-                projectStepLog.getPromptTemplate().getFormatPrompt(),
-                projectStepLog.getUserSubmittedResult(),
-                projectStepLog.getCreatedAt(),
-                projectStepLog.getUpdatedAt()
+                projectStep.getRoadmapStep().getStepCode(),
+                projectStep.getRoadmapStep().getDescription(),
+                projectStep.getPrompt().getProvidedPromptSnapshot(),
+                projectStep.getPromptTemplate().getFormatPrompt(),
+                projectStep.getResult() == null ? null : projectStep.getResult().getContentMarkdown(),
+                projectStep.getPrompt().getCreatedAt(),
+                projectStep.getPrompt().getUpdatedAt()
         );
     }
 }

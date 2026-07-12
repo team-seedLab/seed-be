@@ -22,6 +22,8 @@ application-local.yml
 application-prod.yml
 !src/main/resources/application-prod.yml
 
+### docs ###
+docs-local/
 
 ### IntelliJ IDEA ###
 .idea
