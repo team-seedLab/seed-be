@@ -7,15 +7,15 @@ import com.example.seedbe.domain.project.enums.RoadmapStep;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public record ProjectStepSummaryResponse(
+public record ProjectStepResponse(
         UUID stepId,
         RoadmapStep roadmapStep,
         int stepOrder,
         ProjectStepStatus status,
         LocalDateTime completedAt
 ) {
-    public static ProjectStepSummaryResponse from(ProjectStep step) {
-        return new ProjectStepSummaryResponse(step.getStepId(), step.getRoadmapStep(), step.getStepOrder(),
+    public static ProjectStepResponse from(ProjectStep step) {
+        return new ProjectStepResponse(step.getStepId(), step.getRoadmapStep(), step.getStepOrder(),
                 step.getStatus(), step.getCompletedAt());
     }
 }

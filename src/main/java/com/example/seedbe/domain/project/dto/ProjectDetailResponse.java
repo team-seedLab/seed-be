@@ -25,12 +25,12 @@ public record ProjectDetailResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         LocalDateTime completedAt,
-        List<ProjectStepSummaryResponse> steps
+        List<ProjectStepResponse> steps
 ) {
     public static ProjectDetailResponse of(Project project, RoadmapStep currentRoadmapStep,
                                            Integer currentStepOrder, int totalStepCount,
                                            int completedStepCount, int progressPercent,
-                                           List<ProjectStepSummaryResponse> steps) {
+                                           List<ProjectStepResponse> steps) {
         return new ProjectDetailResponse(project.getProjectId(), project.getTitle(), project.getRoadmapType(),
                 project.getStatus(), project.getDesiredOutcome(), project.getKeyFocus(),
                 project.getRequiredElements(), currentRoadmapStep, currentStepOrder, totalStepCount,

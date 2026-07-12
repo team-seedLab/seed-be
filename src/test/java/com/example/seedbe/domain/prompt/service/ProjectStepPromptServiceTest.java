@@ -150,7 +150,8 @@ class ProjectStepPromptServiceTest {
 
     private void stubLockedStep(Project project, ProjectStep step) {
         stubContext(project);
-        when(stepRepository.findByProjectAndRoadmapStepForUpdate(project, RoadmapStep.CONSTRAINT_ANALYSIS))
+        when(stepRepository.findByProjectAndRoadmapStepWithPromptTemplateForUpdate(
+                project, RoadmapStep.CONSTRAINT_ANALYSIS))
                 .thenReturn(Optional.of(step));
     }
 

@@ -7,15 +7,15 @@ import com.example.seedbe.domain.project.enums.RoadmapType;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public record ProjectSummaryResponse(
+public record ProjectResponse(
         UUID projectId,
         String title,
         RoadmapType roadmapType,
         ProjectStatus status,
         LocalDateTime createdAt
 ) {
-    public static ProjectSummaryResponse from(Project project) {
-        return new ProjectSummaryResponse(
+    public static ProjectResponse from(Project project) {
+        return new ProjectResponse(
                 project.getProjectId(),
                 project.getTitle(),
                 project.getRoadmapType(),

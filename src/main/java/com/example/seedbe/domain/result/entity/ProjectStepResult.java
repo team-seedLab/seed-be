@@ -1,5 +1,6 @@
-package com.example.seedbe.domain.project.entity;
+package com.example.seedbe.domain.result.entity;
 
+import com.example.seedbe.domain.project.entity.ProjectStep;
 import com.example.seedbe.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
