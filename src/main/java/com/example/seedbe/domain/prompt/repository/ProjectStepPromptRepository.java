@@ -1,7 +1,7 @@
-package com.example.seedbe.domain.project.repository;
+package com.example.seedbe.domain.prompt.repository;
 
 import com.example.seedbe.domain.project.entity.ProjectStep;
-import com.example.seedbe.domain.project.entity.ProjectStepPrompt;
+import com.example.seedbe.domain.prompt.entity.ProjectStepPrompt;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

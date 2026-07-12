@@ -1,5 +1,6 @@
-package com.example.seedbe.domain.project.entity;
+package com.example.seedbe.domain.prompt.entity;
 
+import com.example.seedbe.domain.project.entity.ProjectStep;
 import com.example.seedbe.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -51,6 +52,14 @@ public class ProjectStepPrompt extends BaseTimeEntity {
         this.editedPrompt = editedPrompt;
         this.addedCount = addedCount == null ? 0 : addedCount;
         this.removedCount = removedCount == null ? 0 : removedCount;
+        this.diffJson = diffJson;
+    }
+
+    public void updateEditedPrompt(String editedPrompt, int addedCount, int removedCount,
+                                   Map<String, Object> diffJson) {
+        this.editedPrompt = editedPrompt;
+        this.addedCount = addedCount;
+        this.removedCount = removedCount;
         this.diffJson = diffJson;
     }
 }

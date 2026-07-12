@@ -52,9 +52,6 @@ public class ProjectStep extends BaseTimeEntity {
     private LocalDateTime completedAt;
 
     @OneToOne(mappedBy = "step", fetch = FetchType.LAZY)
-    private ProjectStepPrompt prompt;
-
-    @OneToOne(mappedBy = "step", fetch = FetchType.LAZY)
     private ProjectStepResult result;
 
     @Builder
@@ -67,8 +64,7 @@ public class ProjectStep extends BaseTimeEntity {
         this.status = status == null ? ProjectStepStatus.PENDING : status;
     }
 
-    public void start(ProjectStepPrompt prompt) {
-        this.prompt = prompt;
+    public void start() {
         if (status == ProjectStepStatus.PENDING) {
             status = ProjectStepStatus.IN_PROGRESS;
         }
