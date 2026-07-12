@@ -16,6 +16,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -45,34 +46,53 @@ public class Project extends BaseTimeEntity {
     @Column(name = "status", nullable = false)
     private ProjectStatus status;
 
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     // PostgreSQL의 jsonb 타입을 Java의 Map이나 커스텀 객체로 바로 맵핑
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "initial_context", columnDefinition = "jsonb")
     private Map<String, Object> initialContext;
 
+    @Column(name = "desired_outcome", columnDefinition = "TEXT")
+    private String desiredOutcome;
+
+    @Column(name = "key_focus", columnDefinition = "TEXT")
+    private String keyFocus;
+
+    @Column(name = "required_elements", columnDefinition = "TEXT")
+    private String requiredElements;
+
     @OneToMany(mappedBy = "project", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private List<ProjectStepLog> stepLogs = new ArrayList<>();
+    private List<ProjectStep> steps = new ArrayList<>();
 
     @Builder
-    public Project(User user, String title, RoadmapType roadmapType, ProjectStatus status, Map<String, Object> initialContext) {
+    public Project(User user, String title, RoadmapType roadmapType, ProjectStatus status,
+                   Map<String, Object> initialContext, String desiredOutcome, String keyFocus,
+                   String requiredElements) {
         this.user = user;
         this.title = title;
         this.roadmapType = roadmapType;
         this.status = status;
         this.initialContext = initialContext;
+        this.desiredOutcome = desiredOutcome;
+        this.keyFocus = keyFocus;
+        this.requiredElements = requiredElements;
     }
 
-    public void complete(ProjectStepLog projectStepLog){
+    public void complete(ProjectStep projectStep){
         RoadmapStep lastStep = this.roadmapType.getLastStep();
 
-        if (!projectStepLog.getRoadmapStep().equals(lastStep)) {
+        if (!projectStep.getRoadmapStep().equals(lastStep)) {
             throw new BusinessException(ErrorType.NOT_LAST_STEP);
         }
 
-        if (projectStepLog.getUserSubmittedResult().isBlank()) {
+        ProjectStepResult result = projectStep.getResult();
+        if (result == null || result.getContentMarkdown() == null || result.getContentMarkdown().isBlank()) {
             throw new BusinessException(ErrorType.GENERATED_RESULT_NOT_FOUND);
         }
 
         this.status = ProjectStatus.COMPLETED;
+        this.completedAt = LocalDateTime.now();
     }
 }

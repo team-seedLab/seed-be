@@ -28,9 +28,10 @@ public class AIService {
     private final ObjectMapper objectMapper =  new ObjectMapper();
     private final RestClient restClient = RestClient.create();
 
-    public Map<String, Object> analyzeToJSON(String pdfText, String userIntent, RoadmapType roadmapType) {
+    public Map<String, Object> analyzeToJSON(String pdfText, String desiredOutcome, String keyFocus,
+                                             String requiredElements, RoadmapType roadmapType) {
         // 템플릿 엔진용 프롬프트 생성
-        String prompt = buildPrompt(pdfText, userIntent, roadmapType);
+        String prompt = buildPrompt(pdfText, desiredOutcome, keyFocus, requiredElements, roadmapType);
 
         // Gemini API 실제 호출
         String aiResponseJson = callGeminiApi(prompt);
@@ -39,7 +40,8 @@ public class AIService {
         return parseJsonToMap(aiResponseJson);
     }
 
-    private String buildPrompt(String pdfText, String userIntent, RoadmapType type) {
+    private String buildPrompt(String pdfText, String desiredOutcome, String keyFocus,
+                               String requiredElements, RoadmapType type) {
         String jsonSchema = switch (type) {
             case REPORT -> """
                     {
@@ -92,12 +94,18 @@ public class AIService {
 
         return String.format("""
                 너는 대학생의 과제 지시서(PDF)와 추가 요구사항을 분석하여, AI 템플릿 엔진에 주입할 '핵심 변수'들을 추출하는 최고 수준의 데이터 파싱 전문가야.
-                아래 [과제 텍스트]와 [유저 요구사항]을 분석하여, '%s' 과제 수행의 전 과정에 필요한 필수 파라미터를 모두 추출해 줘.
+                아래 과제 텍스트와 사용자 의도를 분석하여, '%s' 과제 수행의 전 과정에 필요한 필수 파라미터를 모두 추출해 줘.
                 
                 [과제 텍스트]
                 %s
                 
-                [유저 요구사항]
+                [원하는 결과물]
+                %s
+
+                [핵심 관점]
+                %s
+
+                [필수 포함 요소]
                 %s
                 
                 [매우 중요한 행동 원칙]
@@ -110,9 +118,15 @@ public class AIService {
                 """,
                 type.getDescription(),
                 pdfText,
-                (userIntent != null && !userIntent.isBlank()) ? userIntent : "특별한 요구사항 없음",
+                intentOrDefault(desiredOutcome),
+                intentOrDefault(keyFocus),
+                intentOrDefault(requiredElements),
                 jsonSchema
         );
+    }
+
+    private String intentOrDefault(String intent) {
+        return intent != null && !intent.isBlank() ? intent : "특별한 요구사항 없음";
     }
 
     private String callGeminiApi(String prompt) {

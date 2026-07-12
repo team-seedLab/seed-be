@@ -17,4 +17,9 @@ public class PdfTextNormalizer {
                 .replaceAll(VERTICAL_WHITESPACE, "\n")
                 .trim();
     }
+
+    public String normalizeAndLimit(String text, int maxLength) {
+        String normalized = normalize(text);
+        return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength);
+    }
 }

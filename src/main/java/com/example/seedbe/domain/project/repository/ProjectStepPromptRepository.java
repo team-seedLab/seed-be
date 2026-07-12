@@ -1,0 +1,12 @@
+package com.example.seedbe.domain.project.repository;
+
+import com.example.seedbe.domain.project.entity.ProjectStep;
+import com.example.seedbe.domain.project.entity.ProjectStepPrompt;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public interface ProjectStepPromptRepository extends JpaRepository<ProjectStepPrompt, UUID> {
+    Optional<ProjectStepPrompt> findByStep(ProjectStep step);
+}

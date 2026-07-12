@@ -2,6 +2,7 @@ package com.example.seedbe.domain.prompt.entity;
 
 import com.example.seedbe.domain.project.enums.RoadmapStep;
 import com.example.seedbe.domain.project.enums.RoadmapType;
+import com.example.seedbe.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -16,24 +17,24 @@ import java.util.UUID;
 @Table(name = "prompt_template")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class PromptTemplate {
+public class PromptTemplate extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "prompt_template_id", updatable = false, nullable = false)
     private UUID promptTemplateId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "roadmap_type", nullable = false, length = 30)
+    @Column(name = "roadmap_type", nullable = false, length = 50)
     private RoadmapType roadmapType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "roadmap_step", nullable = false, length = 50)
+    @Column(name = "roadmap_step", nullable = false, length = 80)
     private RoadmapStep roadmapStep;
 
     @Column(name = "step_order", nullable = false)
     private Integer stepOrder;
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 30)
     private String version;
 
     @Column(name = "action_prompt", columnDefinition = "TEXT", nullable = false)

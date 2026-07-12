@@ -30,6 +30,10 @@ public enum ErrorType {
     INVALID_ROADMAP_STEP(HttpStatus.BAD_REQUEST, "P007", "해당 로드맵 단계가 존재하지 않습니다"),
     NO_MATCHING_ROADMAP_TYPE(HttpStatus.BAD_REQUEST, "P008", "해당 로드맵 유형에서 지원하지 않는 단계입니다."),
     NOT_LAST_STEP(HttpStatus.BAD_REQUEST, "P009", "마지막 단계가 아닙니다"),
+    UNSUPPORTED_FILE_TYPE(HttpStatus.BAD_REQUEST, "P010", "지원하지 않는 파일 형식입니다. PDF만 업로드할 수 있습니다."),
+    EMPTY_PDF_TEXT(HttpStatus.BAD_REQUEST, "P011", "PDF에서 분석 가능한 텍스트를 추출하지 못했습니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "P012", "PDF 파일은 개당 20MB를 초과할 수 없습니다."),
+    INVALID_ROADMAP_TEMPLATE(HttpStatus.INTERNAL_SERVER_ERROR, "P013", "로드맵 단계와 프롬프트 템플릿 구성이 올바르지 않습니다."),
 
 
     // [AI Prompt] AI 프롬프트 네비게이션 관련
