@@ -15,7 +15,7 @@ public class ProjectValidator {
     private final ProjectRepository projectRepository;
 
     public Project getProjectWithOwnershipCheck(UUID userId, UUID projectId) {
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findByIdWithUser(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorType.PROJECT_NOT_FOUND));
 
         if (!project.getUser().getUserId().equals(userId)) {
