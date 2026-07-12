@@ -156,7 +156,8 @@ class ProjectStepPromptServiceTest {
 
     private void stubStep(Project project, ProjectStep step) {
         stubContext(project);
-        when(stepRepository.findByProjectAndRoadmapStep(project, RoadmapStep.CONSTRAINT_ANALYSIS))
+        when(stepRepository.findByProjectAndRoadmapStepWithPromptTemplate(
+                project, RoadmapStep.CONSTRAINT_ANALYSIS))
                 .thenReturn(Optional.of(step));
     }
 

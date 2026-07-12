@@ -54,7 +54,8 @@ public class ProjectStepPromptService {
     @Transactional(readOnly = true)
     public ProjectStepPromptResponse getPrompt(UUID userId, UUID projectId, String stepCodeStr) {
         ValidatedContext context = validateAndGetContext(userId, projectId, stepCodeStr);
-        ProjectStep step = stepRepository.findByProjectAndRoadmapStep(context.project(), context.step())
+        ProjectStep step = stepRepository.findByProjectAndRoadmapStepWithPromptTemplate(
+                        context.project(), context.step())
                 .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
         ProjectStepPrompt prompt = promptRepository.findByStep(step)
                 .orElseThrow(() -> new BusinessException(ErrorType.GENERATED_PROMPT_NOT_FOUND));
