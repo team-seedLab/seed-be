@@ -92,6 +92,15 @@ class PdfServiceTest {
         assertThat(result).hasSize(100_000);
     }
 
+    @Test
+    @DisplayName("최대 길이 경계에서 Unicode surrogate pair를 분리하지 않는다.")
+    void normalizeAndLimitDoesNotSplitSurrogatePair() {
+        String result = textNormalizer.normalizeAndLimit("1234😀after", 5);
+
+        assertThat(result).isEqualTo("1234");
+        assertThat(result).doesNotContain("�");
+    }
+
     private PdfService createPdfService() {
         PdfTextLayerExtractor textLayerExtractor = new PdfTextLayerExtractor(textNormalizer);
         TesseractOcrClient ocrClient = new TesseractOcrClient(textNormalizer);
