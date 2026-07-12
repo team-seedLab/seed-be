@@ -8,7 +8,6 @@ import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.dto.ProjectStatusCountResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.entity.ProjectStep;
-import com.example.seedbe.domain.project.entity.ProjectStepPrompt;
 import com.example.seedbe.domain.project.entity.ProjectStepResult;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
 import com.example.seedbe.domain.project.enums.RoadmapStep;
@@ -166,7 +165,7 @@ class ProjectServiceTest {
         completed.complete(ProjectStepResult.builder().step(completed).contentMarkdown("result").build());
         ProjectStep current = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
                 .roadmapStep(RoadmapStep.ARGUMENT_STRUCTURING).stepOrder(2).build();
-        current.start(ProjectStepPrompt.builder().step(current).providedPromptSnapshot("prompt").build());
+        current.start();
         ProjectStep pending = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
                 .roadmapStep(RoadmapStep.DRAFT_GENERATION).stepOrder(3).build();
         PageRequest pageable = PageRequest.of(0, 10);
