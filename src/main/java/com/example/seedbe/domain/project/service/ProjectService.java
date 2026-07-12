@@ -54,11 +54,11 @@ public class ProjectService {
             return new PageImpl<>(List.of(), pageable, projectPage.getTotalElements());
         }
 
-        Map<Project, List<ProjectStep>> stepsByProject = stepRepository.findSummariesByProjects(projects).stream()
-                .collect(Collectors.groupingBy(ProjectStep::getProject));
+        Map<UUID, List<ProjectStep>> stepsByProjectId = stepRepository.findSummariesByProjects(projects).stream()
+                .collect(Collectors.groupingBy(step -> step.getProject().getProjectId()));
         return projectPage.map(project -> {
             ProjectProgress progress = calculateProgress(
-                    stepsByProject.getOrDefault(project, Collections.emptyList()));
+                    stepsByProjectId.getOrDefault(project.getProjectId(), Collections.emptyList()));
             return ProjectListResponse.of(project, progress.currentRoadmapStep(), progress.currentStepOrder(),
                     progress.totalStepCount(), progress.completedStepCount(), progress.progressPercent());
         });

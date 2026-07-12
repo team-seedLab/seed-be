@@ -30,6 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -240,8 +241,10 @@ class ProjectServiceTest {
     }
 
     private Project createProject() {
-        return Project.builder().title("title").roadmapType(RoadmapType.REPORT)
+        Project project = Project.builder().title("title").roadmapType(RoadmapType.REPORT)
                 .status(ProjectStatus.IN_PROGRESS).initialContext(Map.of()).build();
+        ReflectionTestUtils.setField(project, "projectId", UUID.randomUUID());
+        return project;
     }
 
     private ProjectStep completedStep(Project project, RoadmapStep roadmapStep, int stepOrder) {
