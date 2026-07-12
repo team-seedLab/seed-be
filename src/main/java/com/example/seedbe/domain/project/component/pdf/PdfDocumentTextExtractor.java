@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -19,13 +20,15 @@ public class PdfDocumentTextExtractor {
 
     public String extract(PDDocument document) throws IOException {
         PDFRenderer pdfRenderer = new PDFRenderer(document);
+        PDFTextStripper textStripper = new PDFTextStripper();
+        textStripper.setSortByPosition(true);
         StringBuilder documentText = new StringBuilder();
 
         int ocrPageCount = 0;
 
         for (int pageIndex = 0; pageIndex < document.getNumberOfPages(); pageIndex++) {
             int pageNumber = pageIndex + 1;
-            String pageText = textLayerExtractor.extractPage(document, pageNumber);
+            String pageText = textLayerExtractor.extractPage(textStripper, document, pageNumber);
             PDPage page = document.getPage(pageIndex);
 
             if (pdfImageDetector.hasImage(page) && ocrPageCount < MAX_OCR_PAGE_COUNT_PER_FILE) {

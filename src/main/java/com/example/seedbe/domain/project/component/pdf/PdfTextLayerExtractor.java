@@ -14,9 +14,7 @@ public class PdfTextLayerExtractor {
         this.textNormalizer = textNormalizer;
     }
 
-    public String extractPage(PDDocument document, int pageNumber) throws IOException {
-        PDFTextStripper stripper = new PDFTextStripper();
-        stripper.setSortByPosition(true);
+    public String extractPage(PDFTextStripper stripper, PDDocument document, int pageNumber) throws IOException {
         stripper.setStartPage(pageNumber);
         stripper.setEndPage(pageNumber);
         return textNormalizer.normalize(stripper.getText(document));
