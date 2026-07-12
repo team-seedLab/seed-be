@@ -6,6 +6,7 @@ import com.example.seedbe.domain.project.entity.ProjectStep;
 import com.example.seedbe.domain.project.enums.RoadmapStep;
 import com.example.seedbe.domain.project.repository.ProjectStepRepository;
 import com.example.seedbe.domain.prompt.component.PromptDiffCalculator;
+import com.example.seedbe.domain.prompt.component.PromptVariableResolver;
 import com.example.seedbe.domain.prompt.dto.ProjectStepPromptResponse;
 import com.example.seedbe.domain.prompt.entity.ProjectStepPrompt;
 import com.example.seedbe.domain.prompt.repository.ProjectStepPromptRepository;
@@ -15,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -25,6 +25,7 @@ public class ProjectStepPromptService {
     private final ProjectStepRepository stepRepository;
     private final ProjectStepPromptRepository promptRepository;
     private final PromptDiffCalculator promptDiffCalculator;
+    private final PromptVariableResolver promptVariableResolver;
 
     @Transactional
     public ProjectStepPromptResponse createPrompt(UUID userId, UUID projectId, String stepCodeStr) {
@@ -38,7 +39,7 @@ public class ProjectStepPromptService {
             return ProjectStepPromptResponse.of(step, existingPrompt.get());
         }
 
-        String providedPrompt = replaceVariables(
+        String providedPrompt = promptVariableResolver.resolve(
                 step.getPromptTemplate().getActionPrompt(), project.getInitialContext());
         ProjectStepPrompt prompt = ProjectStepPrompt.builder()
                 .step(step)
@@ -53,7 +54,8 @@ public class ProjectStepPromptService {
     @Transactional(readOnly = true)
     public ProjectStepPromptResponse getPrompt(UUID userId, UUID projectId, String stepCodeStr) {
         ValidatedContext context = validateAndGetContext(userId, projectId, stepCodeStr);
-        ProjectStep step = stepRepository.findByProjectAndRoadmapStep(context.project(), context.step())
+        ProjectStep step = stepRepository.findByProjectAndRoadmapStepWithPromptTemplate(
+                        context.project(), context.step())
                 .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
         ProjectStepPrompt prompt = promptRepository.findByStep(step)
                 .orElseThrow(() -> new BusinessException(ErrorType.GENERATED_PROMPT_NOT_FOUND));
@@ -76,17 +78,6 @@ public class ProjectStepPromptService {
     private ProjectStep getStepForUpdate(ValidatedContext context) {
         return stepRepository.findByProjectAndRoadmapStepForUpdate(context.project(), context.step())
                 .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
-    }
-
-    private String replaceVariables(String promptTemplate, Map<String, Object> initialContext) {
-        String result = promptTemplate;
-        if (initialContext == null || initialContext.isEmpty()) {
-            return result;
-        }
-        for (Map.Entry<String, Object> entry : initialContext.entrySet()) {
-            result = result.replace("[" + entry.getKey() + "]", String.valueOf(entry.getValue()));
-        }
-        return result;
     }
 
     private ValidatedContext validateAndGetContext(UUID userId, UUID projectId, String stepCodeStr) {
