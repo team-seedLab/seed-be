@@ -2,6 +2,7 @@ package com.example.seedbe.domain.prompt.service;
 
 import com.example.seedbe.domain.project.component.ProjectValidator;
 import com.example.seedbe.domain.prompt.component.PromptDiffCalculator;
+import com.example.seedbe.domain.prompt.component.PromptVariableResolver;
 import com.example.seedbe.domain.prompt.dto.ProjectStepPromptResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.entity.ProjectStep;
@@ -126,7 +127,7 @@ class ProjectStepPromptServiceTest {
 
     private ProjectStepPromptService service() {
         return new ProjectStepPromptService(projectValidator, stepRepository, promptRepository,
-                new PromptDiffCalculator());
+                new PromptDiffCalculator(), new PromptVariableResolver());
     }
 
     private Project createProject() {
