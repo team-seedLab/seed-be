@@ -1,6 +1,7 @@
 package com.example.seedbe.domain.aimentor.service;
 
 import com.example.seedbe.domain.aimentor.client.AiMentorClient;
+import com.example.seedbe.domain.aimentor.component.ProjectContextRetriever;
 import com.example.seedbe.domain.aimentor.dto.AiMessageResponse;
 import com.example.seedbe.domain.aimentor.entity.ProjectStepAiMessage;
 import com.example.seedbe.domain.aimentor.enums.AiMessageSender;
@@ -13,6 +14,7 @@ import com.example.seedbe.domain.project.enums.RoadmapStep;
 import com.example.seedbe.domain.project.repository.ProjectStepRepository;
 import com.example.seedbe.domain.prompt.entity.ProjectStepPrompt;
 import com.example.seedbe.domain.prompt.repository.ProjectStepPromptRepository;
+import com.example.seedbe.domain.user.repository.UserRepository;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
 import lombok.RequiredArgsConstructor;
@@ -27,18 +29,21 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ProjectStepAiMentorService {
-    private static final long MAX_QUESTION_COUNT_PER_STEP = 20;
+    private static final long MAX_QUESTION_COUNT_PER_STEP = 10;
+    private static final long MAX_QUESTION_COUNT_PER_DAY = 40;
 
     private final ProjectValidator projectValidator;
     private final ProjectStepRepository stepRepository;
     private final ProjectStepPromptRepository promptRepository;
     private final ProjectStepAiMessageRepository messageRepository;
     private final AiMentorClient aiMentorClient;
+    private final ProjectContextRetriever contextRetriever;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public List<AiMessageResponse> getMessages(UUID userId, UUID projectId, String stepCode) {
-        ProjectStep step = getStep(userId, projectId, stepCode, false);
-        return messageRepository.findByStepOrderByCreatedAtAsc(step).stream()
+        ValidatedContext context = getContext(userId, projectId, stepCode, false);
+        return messageRepository.findByStepOrderByCreatedAtAsc(context.step()).stream()
                 .map(AiMessageResponse::from)
                 .toList();
     }
@@ -46,16 +51,34 @@ public class ProjectStepAiMentorService {
     @Transactional
     public List<AiMessageResponse> createMessage(UUID userId, UUID projectId, String stepCode,
                                                  AiMessageType messageType, String question) {
-        ProjectStep step = getStep(userId, projectId, stepCode, true);
-        validateQuestionCount(step);
+        lockUser(userId);
+        ValidatedContext validatedContext = getContext(userId, projectId, stepCode, true);
+        Project project = validatedContext.project();
+        ProjectStep step = validatedContext.step();
+        validateQuestionCount(userId, step);
 
         ProjectStepPrompt prompt = promptRepository.findByStep(step)
                 .orElseThrow(() -> new BusinessException(ErrorType.GENERATED_PROMPT_NOT_FOUND));
         validateMessageType(messageType, prompt);
 
         List<AiMentorClient.ConversationMessage> recentMessages = getRecentMessages(step);
+        String finalPrompt = prompt.getEditedPrompt() == null
+                ? prompt.getProvidedPromptSnapshot()
+                : prompt.getEditedPrompt();
+        String retrievalQuery = String.join("\n",
+                question,
+                step.getRoadmapStep().getDescription(),
+                finalPrompt,
+                valueOrEmpty(project.getKeyFocus()),
+                valueOrEmpty(project.getRequiredElements()));
+        String relevantSource = contextRetriever.retrieve(project.getInitialContext(), retrievalQuery);
         AiMentorClient.AiMentorContext context = new AiMentorClient.AiMentorContext(
-                prompt.getProvidedPromptSnapshot(), prompt.getEditedPrompt(), recentMessages);
+                finalPrompt,
+                relevantSource,
+                project.getDesiredOutcome(),
+                project.getKeyFocus(),
+                project.getRequiredElements(),
+                recentMessages);
 
         UUID turnId = UUID.randomUUID();
         ProjectStepAiMessage userMessage = ProjectStepAiMessage.builder()
@@ -83,23 +106,33 @@ public class ProjectStepAiMentorService {
         return List.of(AiMessageResponse.from(userMessage), AiMessageResponse.from(assistantMessage));
     }
 
-    private ProjectStep getStep(UUID userId, UUID projectId, String stepCode, boolean forUpdate) {
+    private ValidatedContext getContext(UUID userId, UUID projectId, String stepCode, boolean forUpdate) {
         RoadmapStep roadmapStep = RoadmapStep.fromStepCode(stepCode);
         Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
         project.getRoadmapType().validateStep(roadmapStep);
 
         if (forUpdate) {
-            return stepRepository.findByProjectAndRoadmapStepForUpdate(project, roadmapStep)
+            ProjectStep step = stepRepository.findByProjectAndRoadmapStepForUpdate(project, roadmapStep)
                     .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
+            return new ValidatedContext(project, step);
         }
-        return stepRepository.findByProjectAndRoadmapStep(project, roadmapStep)
+        ProjectStep step = stepRepository.findByProjectAndRoadmapStep(project, roadmapStep)
                 .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
+        return new ValidatedContext(project, step);
     }
 
-    private void validateQuestionCount(ProjectStep step) {
+    private void lockUser(UUID userId) {
+        userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new BusinessException(ErrorType.USER_NOT_FOUND));
+    }
+
+    private void validateQuestionCount(UUID userId, ProjectStep step) {
         long questionCount = messageRepository.countByStepAndSender(step, AiMessageSender.USER);
         if (questionCount >= MAX_QUESTION_COUNT_PER_STEP) {
             throw new BusinessException(ErrorType.AI_MENTOR_QUESTION_LIMIT_EXCEEDED);
+        }
+        if (messageRepository.countUserQuestionsToday(userId) >= MAX_QUESTION_COUNT_PER_DAY) {
+            throw new BusinessException(ErrorType.AI_MENTOR_DAILY_LIMIT_EXCEEDED);
         }
     }
 
@@ -118,5 +151,12 @@ public class ProjectStepAiMentorService {
                 .map(message -> new AiMentorClient.ConversationMessage(
                         message.getSender(), message.getContent()))
                 .toList();
+    }
+
+    private String valueOrEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private record ValidatedContext(Project project, ProjectStep step) {
     }
 }

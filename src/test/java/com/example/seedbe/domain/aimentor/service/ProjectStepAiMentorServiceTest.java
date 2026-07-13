@@ -1,6 +1,7 @@
 package com.example.seedbe.domain.aimentor.service;
 
 import com.example.seedbe.domain.aimentor.client.AiMentorClient;
+import com.example.seedbe.domain.aimentor.component.ProjectContextRetriever;
 import com.example.seedbe.domain.aimentor.dto.AiMessageResponse;
 import com.example.seedbe.domain.aimentor.entity.ProjectStepAiMessage;
 import com.example.seedbe.domain.aimentor.enums.AiMessageSender;
@@ -16,6 +17,8 @@ import com.example.seedbe.domain.project.repository.ProjectStepRepository;
 import com.example.seedbe.domain.prompt.entity.ProjectStepPrompt;
 import com.example.seedbe.domain.prompt.entity.PromptTemplate;
 import com.example.seedbe.domain.prompt.repository.ProjectStepPromptRepository;
+import com.example.seedbe.domain.user.entity.User;
+import com.example.seedbe.domain.user.repository.UserRepository;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
 import org.junit.jupiter.api.Test;
@@ -43,6 +46,8 @@ class ProjectStepAiMentorServiceTest {
     @Mock private ProjectStepPromptRepository promptRepository;
     @Mock private ProjectStepAiMessageRepository messageRepository;
     @Mock private AiMentorClient aiMentorClient;
+    @Mock private ProjectContextRetriever contextRetriever;
+    @Mock private UserRepository userRepository;
 
     private final UUID userId = UUID.randomUUID();
     private final UUID projectId = UUID.randomUUID();
@@ -55,6 +60,7 @@ class ProjectStepAiMentorServiceTest {
         stubLockedContext(project, step, prompt);
         when(messageRepository.countByStepAndSender(step, AiMessageSender.USER)).thenReturn(0L);
         when(messageRepository.findTop10ByStepOrderByCreatedAtDesc(step)).thenReturn(List.of());
+        when(contextRetriever.retrieve(any(), any())).thenReturn("관련 PDF 내용");
         when(messageRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(aiMentorClient.ask(any(), any(), any())).thenReturn(
                 new AiMentorClient.AiMentorReply("answer", 12, 8, 20));
@@ -80,6 +86,7 @@ class ProjectStepAiMentorServiceTest {
                 message(step, AiMessageSender.ASSISTANT, "new"),
                 message(step, AiMessageSender.USER, "old")
         ));
+        when(contextRetriever.retrieve(any(), any())).thenReturn("관련 PDF 내용");
         when(messageRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(aiMentorClient.ask(any(), any(), any())).thenReturn(
                 new AiMentorClient.AiMentorReply("answer", 1, 1, 2));
@@ -89,6 +96,8 @@ class ProjectStepAiMentorServiceTest {
         ArgumentCaptor<AiMentorClient.AiMentorContext> captor =
                 ArgumentCaptor.forClass(AiMentorClient.AiMentorContext.class);
         verify(aiMentorClient).ask(captor.capture(), any(), any());
+        assertThat(captor.getValue().finalPrompt()).isEqualTo("original");
+        assertThat(captor.getValue().relevantSourceContext()).isEqualTo("관련 PDF 내용");
         assertThat(captor.getValue().recentMessages())
                 .extracting(AiMentorClient.ConversationMessage::content)
                 .containsExactly("old", "new");
@@ -110,16 +119,31 @@ class ProjectStepAiMentorServiceTest {
     }
 
     @Test
-    void rejectsMoreThanTwentyQuestionsPerStep() {
+    void rejectsMoreThanTenQuestionsPerStep() {
         Project project = createProject();
         ProjectStep step = createStep(project);
         stubLockedStep(project, step);
-        when(messageRepository.countByStepAndSender(step, AiMessageSender.USER)).thenReturn(20L);
+        when(messageRepository.countByStepAndSender(step, AiMessageSender.USER)).thenReturn(10L);
 
         assertThatThrownBy(() -> service().createMessage(
                 userId, projectId, "constraint_analysis", AiMessageType.CHAT, "question"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorType").isEqualTo(ErrorType.AI_MENTOR_QUESTION_LIMIT_EXCEEDED);
+        verify(promptRepository, never()).findByStep(any());
+    }
+
+    @Test
+    void rejectsMoreThanFortyQuestionsPerDayAcrossProjects() {
+        Project project = createProject();
+        ProjectStep step = createStep(project);
+        stubLockedStep(project, step);
+        when(messageRepository.countByStepAndSender(step, AiMessageSender.USER)).thenReturn(3L);
+        when(messageRepository.countUserQuestionsToday(userId)).thenReturn(40L);
+
+        assertThatThrownBy(() -> service().createMessage(
+                userId, projectId, "constraint_analysis", AiMessageType.CHAT, "question"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorType").isEqualTo(ErrorType.AI_MENTOR_DAILY_LIMIT_EXCEEDED);
         verify(promptRepository, never()).findByStep(any());
     }
 
@@ -130,6 +154,7 @@ class ProjectStepAiMentorServiceTest {
         stubLockedContext(project, step, createPrompt(step, "original", null));
         when(messageRepository.countByStepAndSender(step, AiMessageSender.USER)).thenReturn(0L);
         when(messageRepository.findTop10ByStepOrderByCreatedAtDesc(step)).thenReturn(List.of());
+        when(contextRetriever.retrieve(any(), any())).thenReturn("관련 PDF 내용");
         when(messageRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(aiMentorClient.ask(any(), any(), any()))
                 .thenThrow(new BusinessException(ErrorType.AI_MENTOR_SERVER_ERROR));
@@ -174,7 +199,7 @@ class ProjectStepAiMentorServiceTest {
 
     private ProjectStepAiMentorService service() {
         return new ProjectStepAiMentorService(projectValidator, stepRepository, promptRepository,
-                messageRepository, aiMentorClient);
+                messageRepository, aiMentorClient, contextRetriever, userRepository);
     }
 
     private Project createProject() {
@@ -202,6 +227,7 @@ class ProjectStepAiMentorServiceTest {
     }
 
     private void stubLockedStep(Project project, ProjectStep step) {
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(org.mockito.Mockito.mock(User.class)));
         stubProject(project);
         when(stepRepository.findByProjectAndRoadmapStepForUpdate(project, RoadmapStep.CONSTRAINT_ANALYSIS))
                 .thenReturn(Optional.of(step));

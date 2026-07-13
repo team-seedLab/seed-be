@@ -9,8 +9,11 @@ public interface AiMentorClient {
     AiMentorReply ask(AiMentorContext context, String question, AiMessageType messageType);
 
     record AiMentorContext(
-            String providedPrompt,
-            String editedPrompt,
+            String finalPrompt,
+            String relevantSourceContext,
+            String desiredOutcome,
+            String keyFocus,
+            String requiredElements,
             List<ConversationMessage> recentMessages
     ) {
     }
