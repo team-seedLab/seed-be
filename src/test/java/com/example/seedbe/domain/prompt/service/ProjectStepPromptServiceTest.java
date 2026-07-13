@@ -16,6 +16,7 @@ import com.example.seedbe.domain.project.enums.RoadmapType;
 import com.example.seedbe.domain.prompt.repository.ProjectStepPromptRepository;
 import com.example.seedbe.domain.project.repository.ProjectStepRepository;
 import com.example.seedbe.domain.prompt.entity.PromptTemplate;
+import com.example.seedbe.domain.selfcheck.repository.ProjectStepSelfCheckRepository;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,7 @@ class ProjectStepPromptServiceTest {
     @Mock private ProjectValidator projectValidator;
     @Mock private ProjectStepRepository stepRepository;
     @Mock private ProjectStepPromptRepository promptRepository;
+    @Mock private ProjectStepSelfCheckRepository selfCheckRepository;
     @Mock private PromptTemplate promptTemplate;
 
     private final UUID userId = UUID.randomUUID();
@@ -146,9 +148,66 @@ class ProjectStepPromptServiceTest {
                 .extracting("errorType").isEqualTo(ErrorType.GENERATED_PROMPT_NOT_FOUND);
     }
 
+    @Test
+    void rejectsStartingNextStepBeforePreviousStepCompletion() {
+        Project project = createProject();
+        ProjectStep previousStep = createStep(project);
+        ProjectStep nextStep = ProjectStep.builder().project(project).promptTemplate(promptTemplate)
+                .roadmapStep(RoadmapStep.ARGUMENT_STRUCTURING).stepOrder(2).build();
+        when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
+        when(stepRepository.findByProjectAndRoadmapStepWithPromptTemplateForUpdate(
+                project, RoadmapStep.ARGUMENT_STRUCTURING)).thenReturn(Optional.of(nextStep));
+        when(stepRepository.findByProjectAndStepOrder(project, 1)).thenReturn(Optional.of(previousStep));
+
+        assertThatThrownBy(() -> service().createPrompt(userId, projectId, "argument_structuring"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorType").isEqualTo(ErrorType.PREVIOUS_STEP_NOT_COMPLETED);
+        verify(promptRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void rejectsStartingNextStepWhenPreviousSelfCheckIsMissing() {
+        Project project = createProject();
+        ProjectStep previousStep = createStep(project);
+        previousStep.complete();
+        ProjectStep nextStep = ProjectStep.builder().project(project).promptTemplate(promptTemplate)
+                .roadmapStep(RoadmapStep.ARGUMENT_STRUCTURING).stepOrder(2).build();
+        when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
+        when(stepRepository.findByProjectAndRoadmapStepWithPromptTemplateForUpdate(
+                project, RoadmapStep.ARGUMENT_STRUCTURING)).thenReturn(Optional.of(nextStep));
+        when(stepRepository.findByProjectAndStepOrder(project, 1)).thenReturn(Optional.of(previousStep));
+        when(selfCheckRepository.existsByStep(previousStep)).thenReturn(false);
+
+        assertThatThrownBy(() -> service().createPrompt(userId, projectId, "argument_structuring"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorType").isEqualTo(ErrorType.PREVIOUS_STEP_NOT_COMPLETED);
+    }
+
+    @Test
+    void returnsLegacyExistingPromptWithoutPreviousSelfCheck() {
+        Project project = createProject();
+        ProjectStep nextStep = ProjectStep.builder().project(project).promptTemplate(promptTemplate)
+                .roadmapStep(RoadmapStep.ARGUMENT_STRUCTURING).stepOrder(2).build();
+        ProjectStepPrompt existingPrompt = createPrompt(nextStep, "legacy provided");
+        when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
+        when(stepRepository.findByProjectAndRoadmapStepWithPromptTemplateForUpdate(
+                project, RoadmapStep.ARGUMENT_STRUCTURING)).thenReturn(Optional.of(nextStep));
+        when(promptRepository.findByStep(nextStep)).thenReturn(Optional.of(existingPrompt));
+        when(promptTemplate.getFormatPrompt()).thenReturn("format");
+
+        ProjectStepPromptResponse response = service().createPrompt(
+                userId, projectId, "argument_structuring");
+
+        assertThat(response.providedPromptSnapshot()).isEqualTo("legacy provided");
+        assertThat(nextStep.getStatus()).isEqualTo(ProjectStepStatus.IN_PROGRESS);
+        verify(stepRepository, never()).findByProjectAndStepOrder(any(), any());
+        verify(selfCheckRepository, never()).existsByStep(any());
+    }
+
     private ProjectStepPromptService service() {
         return new ProjectStepPromptService(projectValidator, stepRepository, promptRepository,
-                new PromptDiffCalculator(), new PromptVariableResolver(), new StepPromptComposer());
+                selfCheckRepository, new PromptDiffCalculator(), new PromptVariableResolver(),
+                new StepPromptComposer());
     }
 
     private Project createProject() {

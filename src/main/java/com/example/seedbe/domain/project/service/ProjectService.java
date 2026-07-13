@@ -19,6 +19,7 @@ import com.example.seedbe.domain.prompt.entity.PromptTemplate;
 import com.example.seedbe.domain.prompt.repository.PromptTemplateRepository;
 import com.example.seedbe.domain.result.entity.ProjectStepResult;
 import com.example.seedbe.domain.result.repository.ProjectStepResultRepository;
+import com.example.seedbe.domain.selfcheck.repository.ProjectStepSelfCheckRepository;
 import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
@@ -46,6 +47,7 @@ public class ProjectService {
     private final ProjectStepRepository stepRepository;
     private final PromptTemplateRepository templateRepository;
     private final ProjectStepResultRepository resultRepository;
+    private final ProjectStepSelfCheckRepository selfCheckRepository;
     private final PdfService pdfService;
     private final TransactionTemplate transactionTemplate;
 
@@ -197,6 +199,9 @@ public class ProjectService {
                 .orElseThrow(() -> new BusinessException(ErrorType.GENERATED_RESULT_NOT_FOUND));
         if (result.getContentMarkdown() == null || result.getContentMarkdown().isBlank()) {
             throw new BusinessException(ErrorType.GENERATED_RESULT_NOT_FOUND);
+        }
+        if (!selfCheckRepository.existsByStep(lastStep)) {
+            throw new BusinessException(ErrorType.SELF_CHECK_NOT_FOUND);
         }
 
         project.complete(lastStep);
