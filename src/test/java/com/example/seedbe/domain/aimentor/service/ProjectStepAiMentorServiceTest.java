@@ -26,6 +26,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -36,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +55,8 @@ class ProjectStepAiMentorServiceTest {
     @Mock private AiMentorClient aiMentorClient;
     @Mock private ProjectContextRetriever contextRetriever;
     @Mock private UserRepository userRepository;
+    @Mock private TransactionTemplate transactionTemplate;
+    @Mock private TransactionStatus transactionStatus;
 
     private final UUID userId = UUID.randomUUID();
     private final UUID projectId = UUID.randomUUID();
@@ -59,9 +68,11 @@ class ProjectStepAiMentorServiceTest {
         ProjectStepPrompt prompt = createPrompt(step, "original", "edited");
         stubLockedContext(project, step, prompt);
         when(messageRepository.countByStepAndSender(step, AiMessageSender.USER)).thenReturn(0L);
-        when(messageRepository.findTop10ByStepOrderByCreatedAtDesc(step)).thenReturn(List.of());
+        when(messageRepository.findRecentCompletedByStep(
+                step, AiMessageSender.ASSISTANT, PageRequest.of(0, 10))).thenReturn(List.of());
         when(contextRetriever.retrieve(any(), any())).thenReturn("관련 PDF 내용");
         when(messageRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        stubCompletion(step);
         when(aiMentorClient.ask(any(), any(), any())).thenReturn(
                 new AiMentorClient.AiMentorReply("answer", 12, 8, 20));
 
@@ -73,6 +84,7 @@ class ProjectStepAiMentorServiceTest {
         assertThat(responses.get(1).sender()).isEqualTo(AiMessageSender.ASSISTANT);
         assertThat(responses.get(0).turnId()).isEqualTo(responses.get(1).turnId());
         assertThat(responses.get(1).totalTokens()).isEqualTo(20);
+        verify(transactionTemplate, times(2)).execute(any());
     }
 
     @Test
@@ -80,14 +92,17 @@ class ProjectStepAiMentorServiceTest {
         Project project = createProject();
         ProjectStep step = createStep(project);
         ProjectStepPrompt prompt = createPrompt(step, "original", null);
+        UUID completedTurnId = UUID.randomUUID();
         stubLockedContext(project, step, prompt);
         when(messageRepository.countByStepAndSender(step, AiMessageSender.USER)).thenReturn(3L);
-        when(messageRepository.findTop10ByStepOrderByCreatedAtDesc(step)).thenReturn(List.of(
-                message(step, AiMessageSender.ASSISTANT, "new"),
-                message(step, AiMessageSender.USER, "old")
+        when(messageRepository.findRecentCompletedByStep(
+                step, AiMessageSender.ASSISTANT, PageRequest.of(0, 10))).thenReturn(List.of(
+                message(step, completedTurnId, AiMessageSender.ASSISTANT, "new"),
+                message(step, completedTurnId, AiMessageSender.USER, "old")
         ));
         when(contextRetriever.retrieve(any(), any())).thenReturn("관련 PDF 내용");
         when(messageRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        stubCompletion(step);
         when(aiMentorClient.ask(any(), any(), any())).thenReturn(
                 new AiMentorClient.AiMentorReply("answer", 1, 1, 2));
 
@@ -153,7 +168,8 @@ class ProjectStepAiMentorServiceTest {
         ProjectStep step = createStep(project);
         stubLockedContext(project, step, createPrompt(step, "original", null));
         when(messageRepository.countByStepAndSender(step, AiMessageSender.USER)).thenReturn(0L);
-        when(messageRepository.findTop10ByStepOrderByCreatedAtDesc(step)).thenReturn(List.of());
+        when(messageRepository.findRecentCompletedByStep(
+                step, AiMessageSender.ASSISTANT, PageRequest.of(0, 10))).thenReturn(List.of());
         when(contextRetriever.retrieve(any(), any())).thenReturn("관련 PDF 내용");
         when(messageRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(aiMentorClient.ask(any(), any(), any()))
@@ -167,6 +183,8 @@ class ProjectStepAiMentorServiceTest {
         ArgumentCaptor<ProjectStepAiMessage> captor = ArgumentCaptor.forClass(ProjectStepAiMessage.class);
         verify(messageRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getSender()).isEqualTo(AiMessageSender.USER);
+        verify(messageRepository).deleteAllByTurnId(captor.getValue().getTurnId());
+        verify(transactionTemplate, times(2)).execute(any());
     }
 
     @Test
@@ -174,7 +192,8 @@ class ProjectStepAiMentorServiceTest {
         Project project = createProject();
         ProjectStep step = createStep(project);
         stubStep(project, step);
-        when(messageRepository.findByStepOrderByCreatedAtAsc(step)).thenReturn(List.of(
+        when(messageRepository.findCompletedByStepOrderByCreatedAtAsc(
+                step, AiMessageSender.ASSISTANT)).thenReturn(List.of(
                 message(step, AiMessageSender.USER, "question"),
                 message(step, AiMessageSender.ASSISTANT, "answer")
         ));
@@ -194,12 +213,21 @@ class ProjectStepAiMentorServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorType").isEqualTo(ErrorType.FORBIDDEN_ACCESS);
         verify(stepRepository, never()).findByProjectAndRoadmapStep(any(), any());
-        verify(messageRepository, never()).findByStepOrderByCreatedAtAsc(any());
+        verify(messageRepository, never()).findCompletedByStepOrderByCreatedAtAsc(any(), any());
+    }
+
+    @Test
+    void doesNotWrapExternalAiCallInMethodTransaction() throws Exception {
+        assertThat(ProjectStepAiMentorService.class
+                .getMethod("createMessage", UUID.class, UUID.class, String.class,
+                        AiMessageType.class, String.class)
+                .getAnnotation(Transactional.class))
+                .isNull();
     }
 
     private ProjectStepAiMentorService service() {
         return new ProjectStepAiMentorService(projectValidator, stepRepository, promptRepository,
-                messageRepository, aiMentorClient, contextRetriever, userRepository);
+                messageRepository, aiMentorClient, contextRetriever, userRepository, transactionTemplate);
     }
 
     private Project createProject() {
@@ -208,8 +236,11 @@ class ProjectStepAiMentorServiceTest {
     }
 
     private ProjectStep createStep(Project project) {
-        return ProjectStep.builder().project(project).promptTemplate(org.mockito.Mockito.mock(PromptTemplate.class))
+        ProjectStep step = ProjectStep.builder().project(project)
+                .promptTemplate(org.mockito.Mockito.mock(PromptTemplate.class))
                 .roadmapStep(RoadmapStep.CONSTRAINT_ANALYSIS).stepOrder(1).build();
+        ReflectionTestUtils.setField(step, "stepId", UUID.randomUUID());
+        return step;
     }
 
     private ProjectStepPrompt createPrompt(ProjectStep step, String provided, String edited) {
@@ -218,7 +249,12 @@ class ProjectStepAiMentorServiceTest {
     }
 
     private ProjectStepAiMessage message(ProjectStep step, AiMessageSender sender, String content) {
-        return ProjectStepAiMessage.builder().step(step).turnId(UUID.randomUUID()).sender(sender)
+        return message(step, UUID.randomUUID(), sender, content);
+    }
+
+    private ProjectStepAiMessage message(ProjectStep step, UUID turnId,
+                                         AiMessageSender sender, String content) {
+        return ProjectStepAiMessage.builder().step(step).turnId(turnId).sender(sender)
                 .messageType(AiMessageType.CHAT).content(content).build();
     }
 
@@ -227,10 +263,18 @@ class ProjectStepAiMentorServiceTest {
     }
 
     private void stubLockedStep(Project project, ProjectStep step) {
+        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(transactionStatus);
+        });
         when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(org.mockito.Mockito.mock(User.class)));
         stubProject(project);
         when(stepRepository.findByProjectAndRoadmapStepForUpdate(project, RoadmapStep.CONSTRAINT_ANALYSIS))
                 .thenReturn(Optional.of(step));
+    }
+
+    private void stubCompletion(ProjectStep step) {
+        when(stepRepository.findById(step.getStepId())).thenReturn(Optional.of(step));
     }
 
     private void stubLockedContext(Project project, ProjectStep step, ProjectStepPrompt prompt) {
