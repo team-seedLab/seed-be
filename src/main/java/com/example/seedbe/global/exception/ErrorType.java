@@ -40,7 +40,16 @@ public enum ErrorType {
     PROMPT_TEMPLATE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "AP001", "프롬프트 템플릿이 DB에 존재하지 않습니다"),
     STEP_NOT_STARTED(HttpStatus.NOT_FOUND, "AP002", "필요 단계가 아직 시작되지 않았습니다. 프롬프트를 먼저 발급받으세요."),
     GENERATED_RESULT_NOT_FOUND(HttpStatus.BAD_REQUEST, "AP003", "해당 단계 결과를 등록하셔야 합니다"),
-    GENERATED_PROMPT_NOT_FOUND(HttpStatus.NOT_FOUND, "AP004", "해당 단계 프롬프트를 찾을 수 없습니다");
+    GENERATED_PROMPT_NOT_FOUND(HttpStatus.NOT_FOUND, "AP004", "해당 단계 프롬프트를 찾을 수 없습니다"),
+
+    // [AI Mentor] 단계별 AI 멘토 관련
+    AI_MENTOR_QUESTION_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "AM001", "해당 단계의 AI 멘토 질문 횟수를 초과했습니다."),
+    EDITED_PROMPT_NOT_FOUND(HttpStatus.BAD_REQUEST, "AM002", "수정한 프롬프트가 없어 다시 묻기를 실행할 수 없습니다."),
+    AI_MENTOR_SERVER_ERROR(HttpStatus.BAD_GATEWAY, "AM003", "AI 멘토 응답을 생성하지 못했습니다."),
+    AI_MENTOR_RESPONSE_PARSE_ERROR(HttpStatus.BAD_GATEWAY, "AM004", "AI 멘토 응답을 처리하지 못했습니다."),
+    AI_MENTOR_RESPONSE_TRUNCATED(HttpStatus.BAD_GATEWAY, "AM005", "AI 멘토 답변 생성이 완료되지 않았습니다. 다시 시도해 주세요."),
+    AI_MENTOR_DAILY_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AM006", "오늘 사용할 수 있는 AI 멘토 질문 40회를 모두 사용했습니다."),
+    AI_MENTOR_RESPONSE_FORMAT_ERROR(HttpStatus.BAD_GATEWAY, "AM007", "AI 멘토가 답변 형식을 지키지 못했습니다. 다시 시도해 주세요.");
 
 
     private final HttpStatus httpStatus;

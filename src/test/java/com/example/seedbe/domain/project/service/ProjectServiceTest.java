@@ -1,6 +1,7 @@
 package com.example.seedbe.domain.project.service;
 
 import com.example.seedbe.domain.project.component.ProjectValidator;
+import com.example.seedbe.domain.project.component.ProjectContext;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectResponse;
@@ -56,12 +57,11 @@ class ProjectServiceTest {
     @Mock private PromptTemplateRepository templateRepository;
     @Mock private ProjectStepResultRepository resultRepository;
     @Mock private PdfService pdfService;
-    @Mock private AIService aiService;
     @Mock private TransactionTemplate transactionTemplate;
     @Mock private TransactionStatus transactionStatus;
 
     @Test
-    @DisplayName("PDF와 사용자 입력이 모두 비어 있으면 AI와 DB를 호출하지 않는다.")
+    @DisplayName("PDF와 사용자 입력이 모두 비어 있으면 DB를 호출하지 않는다.")
     void createProjectRejectsEmptyInput() {
         ProjectCreateRequest request = new ProjectCreateRequest("title", RoadmapType.REPORT, "", "", "", null);
         when(pdfService.parse(request.files())).thenReturn(PdfService.PdfParseResult.empty());
@@ -69,7 +69,6 @@ class ProjectServiceTest {
         assertThatThrownBy(() -> service().createProject(createUser(), request))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorType").isEqualTo(ErrorType.NO_CONTENT_TO_ANALYZE);
-        verify(aiService, never()).analyzeToJSON(any(), any(), any(), any(), any());
         verify(projectRepository, never()).save(any());
     }
 
@@ -79,7 +78,6 @@ class ProjectServiceTest {
         ProjectCreateRequest request = new ProjectCreateRequest(
                 "title", RoadmapType.REPORT, "원하는 결과", "핵심 관점", "필수 요소", null);
         when(pdfService.parse(request.files())).thenReturn(new PdfService.PdfParseResult("PDF 텍스트"));
-        when(aiService.analyzeToJSON(any(), any(), any(), any(), any())).thenReturn(Map.of("topic", "테스트"));
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(transactionStatus);
@@ -97,8 +95,6 @@ class ProjectServiceTest {
 
         ProjectResponse response = service().createProject(createUser(), request);
 
-        verify(aiService).analyzeToJSON(
-                "PDF 텍스트", "원하는 결과", "핵심 관점", "필수 요소", RoadmapType.REPORT);
         ArgumentCaptor<List<ProjectStep>> captor = ArgumentCaptor.forClass(List.class);
         verify(stepRepository).saveAll(captor.capture());
         assertThat(captor.getValue()).extracting(ProjectStep::getRoadmapStep)
@@ -111,6 +107,9 @@ class ProjectServiceTest {
         assertThat(projectCaptor.getValue().getDesiredOutcome()).isEqualTo("원하는 결과");
         assertThat(projectCaptor.getValue().getKeyFocus()).isEqualTo("핵심 관점");
         assertThat(projectCaptor.getValue().getRequiredElements()).isEqualTo("필수 요소");
+        assertThat(projectCaptor.getValue().getInitialContext())
+                .containsEntry(ProjectContext.VERSION_KEY, ProjectContext.RAW_DOCUMENT_VERSION)
+                .containsEntry(ProjectContext.SOURCE_TEXT_KEY, "PDF 텍스트");
     }
 
     @Test
@@ -119,7 +118,6 @@ class ProjectServiceTest {
         ProjectCreateRequest request = new ProjectCreateRequest(
                 "title", RoadmapType.REPORT, "원하는 결과", "핵심 관점", "필수 요소", null);
         when(pdfService.parse(request.files())).thenReturn(new PdfService.PdfParseResult("PDF 텍스트"));
-        when(aiService.analyzeToJSON(any(), any(), any(), any(), any())).thenReturn(Map.of());
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(transactionStatus);
@@ -260,7 +258,7 @@ class ProjectServiceTest {
 
     private ProjectService service() {
         return new ProjectService(projectValidator, projectRepository, stepRepository, templateRepository,
-                resultRepository, pdfService, aiService, transactionTemplate);
+                resultRepository, pdfService, transactionTemplate);
     }
 
     private Project createProject() {

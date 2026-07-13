@@ -1,6 +1,7 @@
 package com.example.seedbe.domain.project.service;
 
 import com.example.seedbe.domain.project.component.ProjectValidator;
+import com.example.seedbe.domain.project.component.ProjectContext;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
@@ -46,7 +47,6 @@ public class ProjectService {
     private final PromptTemplateRepository templateRepository;
     private final ProjectStepResultRepository resultRepository;
     private final PdfService pdfService;
-    private final AIService aiService;
     private final TransactionTemplate transactionTemplate;
 
     @Transactional(readOnly = true)
@@ -115,7 +115,7 @@ public class ProjectService {
     }
 
     public ProjectResponse createProject(User user, ProjectCreateRequest projectCreateRequest) {
-        // PDF parsing과 Gemini 호출은 DB transaction 밖에서 먼저 끝낸다.
+        // PDF parsing은 DB transaction 밖에서 먼저 끝낸다.
         PdfService.PdfParseResult pdfParseResult = pdfService.parse(projectCreateRequest.files());
         String desiredOutcome = projectCreateRequest.desiredOutcome();
         String keyFocus = projectCreateRequest.keyFocus();
@@ -125,28 +125,21 @@ public class ProjectService {
             throw new BusinessException(ErrorType.NO_CONTENT_TO_ANALYZE);
         }
 
-        Map<String, Object> extractedVariables = aiService.analyzeToJSON(
-                pdfParseResult.text(),
-                desiredOutcome,
-                keyFocus,
-                requiredElements,
-                projectCreateRequest.roadmapType()
-        );
+        Map<String, Object> initialContext = ProjectContext.rawDocument(pdfParseResult.text());
 
-        // 외부 I/O가 끝난 뒤, 실제 DB write 구간만 짧게 transaction으로 묶는다.
-        return transactionTemplate.execute(status -> saveProject(user, projectCreateRequest, extractedVariables));
+        return transactionTemplate.execute(status -> saveProject(user, projectCreateRequest, initialContext));
     }
 
     private ProjectResponse saveProject(
             User user,
             ProjectCreateRequest projectCreateRequest,
-            Map<String, Object> extractedVariables
+            Map<String, Object> initialContext
     ) {
         Project project = Project.builder()
                 .user(user)
                 .title(projectCreateRequest.title())
                 .roadmapType(projectCreateRequest.roadmapType())
-                .initialContext(extractedVariables)
+                .initialContext(initialContext)
                 .desiredOutcome(projectCreateRequest.desiredOutcome())
                 .keyFocus(projectCreateRequest.keyFocus())
                 .requiredElements(projectCreateRequest.requiredElements())
