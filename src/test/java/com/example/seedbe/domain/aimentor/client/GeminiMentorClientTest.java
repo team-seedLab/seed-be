@@ -1,6 +1,7 @@
 package com.example.seedbe.domain.aimentor.client;
 
 import com.example.seedbe.domain.aimentor.enums.AiMessageType;
+import com.example.seedbe.domain.aimentor.enums.AiMessageSender;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,28 @@ class GeminiMentorClientTest {
                 .contains("- 이렇게 질문해 보세요:")
                 .contains("- 프롬프트 수정 방향:")
                 .contains("이 섹션 뒤에는 다른 내용을 쓰지 않는다");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void normalizesHistoryToAlternatingUserAndModelRoles() {
+        List<AiMentorClient.ConversationMessage> malformedHistory = List.of(
+                new AiMentorClient.ConversationMessage(AiMessageSender.ASSISTANT, "orphan model"),
+                new AiMentorClient.ConversationMessage(AiMessageSender.USER, "old user"),
+                new AiMentorClient.ConversationMessage(AiMessageSender.USER, "latest user"),
+                new AiMentorClient.ConversationMessage(AiMessageSender.ASSISTANT, "model answer"),
+                new AiMentorClient.ConversationMessage(AiMessageSender.USER, "orphan user")
+        );
+        AiMentorClient.AiMentorContext context = new AiMentorClient.AiMentorContext(
+                "final prompt", "source", "outcome", "focus", "elements", malformedHistory);
+
+        Map<String, Object> request = client.buildRequest(context, "current question", AiMessageType.CHAT);
+        List<Map<String, Object>> contents = (List<Map<String, Object>>) request.get("contents");
+
+        assertThat(contents).extracting(content -> content.get("role"))
+                .containsExactly("user", "model", "user");
+        List<Map<String, String>> firstParts = (List<Map<String, String>>) contents.getFirst().get("parts");
+        assertThat(firstParts.getFirst().get("text")).isEqualTo("latest user");
     }
 
     @Test

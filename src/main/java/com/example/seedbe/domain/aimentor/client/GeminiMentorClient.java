@@ -97,13 +97,7 @@ public class GeminiMentorClient implements AiMentorClient {
                 "parts", List.of(Map.of("text", buildInstructions(context, messageType)))
         ));
 
-        List<Map<String, Object>> contents = new ArrayList<>();
-        for (ConversationMessage message : context.recentMessages()) {
-            contents.add(Map.of(
-                    "role", message.sender() == AiMessageSender.USER ? "user" : "model",
-                    "parts", List.of(Map.of("text", message.content()))
-            ));
-        }
+        List<Map<String, Object>> contents = normalizeHistory(context.recentMessages());
         contents.add(Map.of(
                 "role", "user",
                 "parts", List.of(Map.of("text", question))
@@ -111,6 +105,31 @@ public class GeminiMentorClient implements AiMentorClient {
         body.put("contents", contents);
         body.put("generationConfig", Map.of("maxOutputTokens", 4096));
         return body;
+    }
+
+    private List<Map<String, Object>> normalizeHistory(List<ConversationMessage> messages) {
+        List<Map<String, Object>> contents = new ArrayList<>();
+        ConversationMessage pendingUser = null;
+
+        for (ConversationMessage message : messages) {
+            if (message.sender() == AiMessageSender.USER) {
+                pendingUser = message;
+                continue;
+            }
+            if (message.sender() == AiMessageSender.ASSISTANT && pendingUser != null) {
+                contents.add(content("user", pendingUser.content()));
+                contents.add(content("model", message.content()));
+                pendingUser = null;
+            }
+        }
+        return contents;
+    }
+
+    private Map<String, Object> content(String role, String text) {
+        return Map.of(
+                "role", role,
+                "parts", List.of(Map.of("text", text))
+        );
     }
 
     private String buildInstructions(AiMentorContext context, AiMessageType messageType) {

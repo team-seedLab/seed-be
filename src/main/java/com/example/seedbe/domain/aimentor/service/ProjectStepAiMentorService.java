@@ -18,19 +18,26 @@ import com.example.seedbe.domain.user.repository.UserRepository;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProjectStepAiMentorService {
     private static final long MAX_QUESTION_COUNT_PER_STEP = 10;
     private static final long MAX_QUESTION_COUNT_PER_DAY = 40;
+    private static final int RECENT_MESSAGE_COUNT = 10;
 
     private final ProjectValidator projectValidator;
     private final ProjectStepRepository stepRepository;
@@ -39,18 +46,45 @@ public class ProjectStepAiMentorService {
     private final AiMentorClient aiMentorClient;
     private final ProjectContextRetriever contextRetriever;
     private final UserRepository userRepository;
+    private final TransactionTemplate transactionTemplate;
 
     @Transactional(readOnly = true)
     public List<AiMessageResponse> getMessages(UUID userId, UUID projectId, String stepCode) {
         ValidatedContext context = getContext(userId, projectId, stepCode, false);
-        return messageRepository.findByStepOrderByCreatedAtAsc(context.step()).stream()
+        return messageRepository.findCompletedByStepOrderByCreatedAtAsc(
+                        context.step(), AiMessageSender.ASSISTANT).stream()
                 .map(AiMessageResponse::from)
                 .toList();
     }
 
-    @Transactional
     public List<AiMessageResponse> createMessage(UUID userId, UUID projectId, String stepCode,
                                                  AiMessageType messageType, String question) {
+        PreparedTurn preparedTurn = transactionTemplate.execute(status ->
+                prepareTurn(userId, projectId, stepCode, messageType, question));
+        if (preparedTurn == null) {
+            throw new BusinessException(ErrorType.INTERNAL_SERVER_ERROR);
+        }
+
+        try {
+            AiMentorClient.AiMentorReply reply = aiMentorClient.ask(
+                    preparedTurn.context(), question, messageType);
+            List<AiMessageResponse> completedTurn = transactionTemplate.execute(
+                    status -> completeTurn(preparedTurn, reply));
+            if (completedTurn == null) {
+                throw new BusinessException(ErrorType.INTERNAL_SERVER_ERROR);
+            }
+            return completedTurn;
+        } catch (RuntimeException e) {
+            cleanupFailedTurn(preparedTurn.turnId());
+            throw e;
+        }
+    }
+
+    private PreparedTurn prepareTurn(UUID userId, UUID projectId, String stepCode,
+                                     AiMessageType messageType, String question) {
+        messageRepository.deleteStaleIncompleteTurns(
+                AiMessageSender.USER.name(),
+                AiMessageSender.ASSISTANT.name());
         lockUser(userId);
         ValidatedContext validatedContext = getContext(userId, projectId, stepCode, true);
         Project project = validatedContext.project();
@@ -89,13 +123,24 @@ public class ProjectStepAiMentorService {
                 .content(question)
                 .build();
         messageRepository.saveAndFlush(userMessage);
+        return new PreparedTurn(
+                turnId,
+                step.getStepId(),
+                messageType,
+                AiMessageResponse.from(userMessage),
+                context
+        );
+    }
 
-        AiMentorClient.AiMentorReply reply = aiMentorClient.ask(context, question, messageType);
+    private List<AiMessageResponse> completeTurn(PreparedTurn preparedTurn,
+                                                 AiMentorClient.AiMentorReply reply) {
+        ProjectStep step = stepRepository.findById(preparedTurn.stepId())
+                .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
         ProjectStepAiMessage assistantMessage = ProjectStepAiMessage.builder()
                 .step(step)
-                .turnId(turnId)
+                .turnId(preparedTurn.turnId())
                 .sender(AiMessageSender.ASSISTANT)
-                .messageType(messageType)
+                .messageType(preparedTurn.messageType())
                 .content(reply.content())
                 .inputTokens(reply.inputTokens())
                 .outputTokens(reply.outputTokens())
@@ -103,7 +148,18 @@ public class ProjectStepAiMentorService {
                 .build();
         messageRepository.saveAndFlush(assistantMessage);
 
-        return List.of(AiMessageResponse.from(userMessage), AiMessageResponse.from(assistantMessage));
+        return List.of(preparedTurn.userMessage(), AiMessageResponse.from(assistantMessage));
+    }
+
+    private void cleanupFailedTurn(UUID turnId) {
+        try {
+            transactionTemplate.execute(status -> {
+                messageRepository.deleteAllByTurnId(turnId);
+                return null;
+            });
+        } catch (RuntimeException cleanupException) {
+            log.error("Failed to clean up incomplete AI mentor turn: {}", turnId, cleanupException);
+        }
     }
 
     private ValidatedContext getContext(UUID userId, UUID projectId, String stepCode, boolean forUpdate) {
@@ -145,12 +201,26 @@ public class ProjectStepAiMentorService {
 
     private List<AiMentorClient.ConversationMessage> getRecentMessages(ProjectStep step) {
         List<ProjectStepAiMessage> messages = new ArrayList<>(
-                messageRepository.findTop10ByStepOrderByCreatedAtDesc(step));
+                messageRepository.findRecentCompletedByStep(
+                        step, AiMessageSender.ASSISTANT, PageRequest.of(0, RECENT_MESSAGE_COUNT)));
         Collections.reverse(messages);
-        return messages.stream()
-                .map(message -> new AiMentorClient.ConversationMessage(
-                        message.getSender(), message.getContent()))
-                .toList();
+
+        Map<UUID, TurnMessages> turns = new LinkedHashMap<>();
+        for (ProjectStepAiMessage message : messages) {
+            TurnMessages turn = turns.computeIfAbsent(message.getTurnId(), ignored -> new TurnMessages());
+            turn.add(message);
+        }
+
+        List<AiMentorClient.ConversationMessage> conversation = new ArrayList<>();
+        for (TurnMessages turn : turns.values()) {
+            if (turn.userMessage != null && turn.assistantMessage != null) {
+                conversation.add(new AiMentorClient.ConversationMessage(
+                        AiMessageSender.USER, turn.userMessage.getContent()));
+                conversation.add(new AiMentorClient.ConversationMessage(
+                        AiMessageSender.ASSISTANT, turn.assistantMessage.getContent()));
+            }
+        }
+        return conversation;
     }
 
     private String valueOrEmpty(String value) {
@@ -158,5 +228,27 @@ public class ProjectStepAiMentorService {
     }
 
     private record ValidatedContext(Project project, ProjectStep step) {
+    }
+
+    private record PreparedTurn(
+            UUID turnId,
+            UUID stepId,
+            AiMessageType messageType,
+            AiMessageResponse userMessage,
+            AiMentorClient.AiMentorContext context
+    ) {
+    }
+
+    private static class TurnMessages {
+        private ProjectStepAiMessage userMessage;
+        private ProjectStepAiMessage assistantMessage;
+
+        private void add(ProjectStepAiMessage message) {
+            if (message.getSender() == AiMessageSender.USER) {
+                userMessage = message;
+            } else if (message.getSender() == AiMessageSender.ASSISTANT) {
+                assistantMessage = message;
+            }
+        }
     }
 }
