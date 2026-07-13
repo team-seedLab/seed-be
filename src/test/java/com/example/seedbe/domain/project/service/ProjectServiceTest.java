@@ -3,12 +3,11 @@ package com.example.seedbe.domain.project.service;
 import com.example.seedbe.domain.project.component.ProjectValidator;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
-import com.example.seedbe.domain.project.dto.ProjectSummaryResponse;
+import com.example.seedbe.domain.project.dto.ProjectResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.dto.ProjectStatusCountResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.entity.ProjectStep;
-import com.example.seedbe.domain.project.entity.ProjectStepResult;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
 import com.example.seedbe.domain.project.enums.RoadmapStep;
 import com.example.seedbe.domain.project.enums.RoadmapType;
@@ -16,6 +15,8 @@ import com.example.seedbe.domain.project.repository.ProjectRepository;
 import com.example.seedbe.domain.project.repository.ProjectStepRepository;
 import com.example.seedbe.domain.prompt.entity.PromptTemplate;
 import com.example.seedbe.domain.prompt.repository.PromptTemplateRepository;
+import com.example.seedbe.domain.result.repository.ProjectStepResultRepository;
+import com.example.seedbe.domain.result.entity.ProjectStepResult;
 import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.domain.user.enums.Role;
 import com.example.seedbe.global.exception.BusinessException;
@@ -53,6 +54,7 @@ class ProjectServiceTest {
     @Mock private ProjectRepository projectRepository;
     @Mock private ProjectStepRepository stepRepository;
     @Mock private PromptTemplateRepository templateRepository;
+    @Mock private ProjectStepResultRepository resultRepository;
     @Mock private PdfService pdfService;
     @Mock private AIService aiService;
     @Mock private TransactionTemplate transactionTemplate;
@@ -93,7 +95,7 @@ class ProjectServiceTest {
         when(templateRepository.findByRoadmapTypeAndIsActiveTrueOrderByStepOrderAsc(RoadmapType.REPORT))
                 .thenReturn(templates);
 
-        ProjectSummaryResponse response = service().createProject(createUser(), request);
+        ProjectResponse response = service().createProject(createUser(), request);
 
         verify(aiService).analyzeToJSON(
                 "PDF 텍스트", "원하는 결과", "핵심 관점", "필수 요소", RoadmapType.REPORT);
@@ -143,7 +145,7 @@ class ProjectServiceTest {
         Project project = createProject();
         ProjectStep step = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
                 .roadmapStep(RoadmapStep.CONSTRAINT_ANALYSIS).stepOrder(1).build();
-        step.complete(ProjectStepResult.builder().step(step).contentMarkdown("result").build());
+        step.complete();
         when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
         when(stepRepository.findByProjectOrderByStepOrderAsc(project)).thenReturn(List.of(step));
 
@@ -162,7 +164,7 @@ class ProjectServiceTest {
         Project project = createProject();
         ProjectStep completed = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
                 .roadmapStep(RoadmapStep.CONSTRAINT_ANALYSIS).stepOrder(1).build();
-        completed.complete(ProjectStepResult.builder().step(completed).contentMarkdown("result").build());
+        completed.complete();
         ProjectStep current = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
                 .roadmapStep(RoadmapStep.ARGUMENT_STRUCTURING).stepOrder(2).build();
         current.start();
@@ -226,17 +228,39 @@ class ProjectServiceTest {
         ProjectStep lastStep = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
                 .roadmapStep(RoadmapStep.REPORT_REVISION).stepOrder(4).build();
         when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
-        when(stepRepository.findByProjectAndRoadmapStepWithDetails(project, RoadmapStep.REPORT_REVISION))
+        when(stepRepository.findByProjectAndRoadmapStep(project, RoadmapStep.REPORT_REVISION))
                 .thenReturn(Optional.of(lastStep));
+        when(resultRepository.findByStep(lastStep)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().completeProject(userId, projectId))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorType").isEqualTo(ErrorType.GENERATED_RESULT_NOT_FOUND);
     }
 
+    @Test
+    @DisplayName("마지막 단계 결과물이 있으면 프로젝트를 완료한다.")
+    void completeProjectWithSavedLastResult() {
+        UUID userId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        Project project = createProject();
+        ProjectStep lastStep = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
+                .roadmapStep(RoadmapStep.REPORT_REVISION).stepOrder(4).build();
+        ProjectStepResult result = ProjectStepResult.builder()
+                .step(lastStep).contentMarkdown("# 최종 결과").build();
+        when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
+        when(stepRepository.findByProjectAndRoadmapStep(project, RoadmapStep.REPORT_REVISION))
+                .thenReturn(Optional.of(lastStep));
+        when(resultRepository.findByStep(lastStep)).thenReturn(Optional.of(result));
+
+        service().completeProject(userId, projectId);
+
+        assertThat(project.getStatus()).isEqualTo(ProjectStatus.COMPLETED);
+        assertThat(project.getCompletedAt()).isNotNull();
+    }
+
     private ProjectService service() {
         return new ProjectService(projectValidator, projectRepository, stepRepository, templateRepository,
-                pdfService, aiService, transactionTemplate);
+                resultRepository, pdfService, aiService, transactionTemplate);
     }
 
     private Project createProject() {
@@ -249,7 +273,7 @@ class ProjectServiceTest {
     private ProjectStep completedStep(Project project, RoadmapStep roadmapStep, int stepOrder) {
         ProjectStep step = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
                 .roadmapStep(roadmapStep).stepOrder(stepOrder).build();
-        step.complete(ProjectStepResult.builder().step(step).contentMarkdown("result").build());
+        step.complete();
         return step;
     }
 

@@ -51,9 +51,6 @@ public class ProjectStep extends BaseTimeEntity {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-    @OneToOne(mappedBy = "step", fetch = FetchType.LAZY)
-    private ProjectStepResult result;
-
     @Builder
     public ProjectStep(Project project, PromptTemplate promptTemplate, RoadmapStep roadmapStep,
                        Integer stepOrder, ProjectStepStatus status) {
@@ -70,8 +67,7 @@ public class ProjectStep extends BaseTimeEntity {
         }
     }
 
-    public void complete(ProjectStepResult result) {
-        this.result = result;
+    public void complete() {
         this.status = ProjectStepStatus.COMPLETED;
         this.completedAt = LocalDateTime.now();
     }

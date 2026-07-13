@@ -9,4 +9,5 @@ import java.util.UUID;
 
 public interface ProjectStepPromptRepository extends JpaRepository<ProjectStepPrompt, UUID> {
     Optional<ProjectStepPrompt> findByStep(ProjectStep step);
+    boolean existsByStep(ProjectStep step);
 }

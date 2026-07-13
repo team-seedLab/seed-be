@@ -87,11 +87,6 @@ public class Project extends BaseTimeEntity {
             throw new BusinessException(ErrorType.NOT_LAST_STEP);
         }
 
-        ProjectStepResult result = projectStep.getResult();
-        if (result == null || result.getContentMarkdown() == null || result.getContentMarkdown().isBlank()) {
-            throw new BusinessException(ErrorType.GENERATED_RESULT_NOT_FOUND);
-        }
-
         this.status = ProjectStatus.COMPLETED;
         this.completedAt = LocalDateTime.now();
     }

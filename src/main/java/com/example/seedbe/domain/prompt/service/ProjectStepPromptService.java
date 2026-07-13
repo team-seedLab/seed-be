@@ -76,7 +76,8 @@ public class ProjectStepPromptService {
     }
 
     private ProjectStep getStepForUpdate(ValidatedContext context) {
-        return stepRepository.findByProjectAndRoadmapStepForUpdate(context.project(), context.step())
+        return stepRepository.findByProjectAndRoadmapStepWithPromptTemplateForUpdate(
+                        context.project(), context.step())
                 .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
     }
 

@@ -14,6 +14,8 @@ import java.util.UUID;
 import jakarta.persistence.LockModeType;
 
 public interface ProjectStepRepository extends JpaRepository<ProjectStep, UUID> {
+    Optional<ProjectStep> findByProjectAndRoadmapStep(Project project, RoadmapStep roadmapStep);
+
     @Query("""
         SELECT ps FROM ProjectStep ps
         JOIN FETCH ps.promptTemplate
@@ -39,18 +41,17 @@ public interface ProjectStepRepository extends JpaRepository<ProjectStep, UUID> 
         JOIN FETCH ps.promptTemplate
         WHERE ps.project = :project AND ps.roadmapStep = :roadmapStep
     """)
-    Optional<ProjectStep> findByProjectAndRoadmapStepForUpdate(
+    Optional<ProjectStep> findByProjectAndRoadmapStepWithPromptTemplateForUpdate(
             @Param("project") Project project,
             @Param("roadmapStep") RoadmapStep roadmapStep
     );
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT ps FROM ProjectStep ps
-        JOIN FETCH ps.promptTemplate
-        LEFT JOIN FETCH ps.result
         WHERE ps.project = :project AND ps.roadmapStep = :roadmapStep
     """)
-    Optional<ProjectStep> findByProjectAndRoadmapStepWithDetails(
+    Optional<ProjectStep> findByProjectAndRoadmapStepForUpdate(
             @Param("project") Project project,
             @Param("roadmapStep") RoadmapStep roadmapStep
     );

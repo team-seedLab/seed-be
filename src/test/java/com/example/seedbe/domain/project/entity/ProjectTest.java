@@ -21,7 +21,7 @@ class ProjectTest {
                 .status(ProjectStatus.IN_PROGRESS).initialContext(Map.of()).build();
         ProjectStep lastStep = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
                 .roadmapStep(RoadmapStep.REPORT_REVISION).stepOrder(4).build();
-        lastStep.complete(ProjectStepResult.builder().step(lastStep).contentMarkdown("result").build());
+        lastStep.complete();
 
         project.complete(lastStep);
 
@@ -35,7 +35,7 @@ class ProjectTest {
                 .status(ProjectStatus.IN_PROGRESS).initialContext(Map.of()).build();
         ProjectStep step = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
                 .roadmapStep(RoadmapStep.CONSTRAINT_ANALYSIS).stepOrder(1).build();
-        step.complete(ProjectStepResult.builder().step(step).contentMarkdown("result").build());
+        step.complete();
 
         assertThatThrownBy(() -> project.complete(step))
                 .isInstanceOf(BusinessException.class)

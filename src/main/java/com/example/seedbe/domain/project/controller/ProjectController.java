@@ -2,7 +2,7 @@ package com.example.seedbe.domain.project.controller;
 
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
-import com.example.seedbe.domain.project.dto.ProjectSummaryResponse;
+import com.example.seedbe.domain.project.dto.ProjectResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.dto.ProjectStatusCountResponse;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
@@ -74,11 +74,11 @@ public class ProjectController {
             description = "PDF 파일과 유저 입력값을 받아 AI로 파싱한 후, 템플릿 변수로 DB에 즉시 저장합니다."
     )
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<ProjectSummaryResponse> createProject(
+    public ApiResponse<ProjectResponse> createProject(
             @AuthenticationPrincipal CustomUserDetails user,
             @Valid @ModelAttribute ProjectCreateRequest projectCreateRequest
             ){
-        ProjectSummaryResponse response = projectService.createProject(user.getUser(), projectCreateRequest);
+        ProjectResponse response = projectService.createProject(user.getUser(), projectCreateRequest);
         return ApiResponse.success(response);
     }
 

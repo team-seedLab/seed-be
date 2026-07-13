@@ -5,8 +5,8 @@ import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
 import com.example.seedbe.domain.project.dto.ProjectDetailResponse;
 import com.example.seedbe.domain.project.dto.ProjectListResponse;
 import com.example.seedbe.domain.project.dto.ProjectStatusCountResponse;
-import com.example.seedbe.domain.project.dto.ProjectStepSummaryResponse;
-import com.example.seedbe.domain.project.dto.ProjectSummaryResponse;
+import com.example.seedbe.domain.project.dto.ProjectStepResponse;
+import com.example.seedbe.domain.project.dto.ProjectResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.entity.ProjectStep;
 import com.example.seedbe.domain.project.enums.RoadmapStep;
@@ -16,6 +16,8 @@ import com.example.seedbe.domain.project.repository.ProjectRepository;
 import com.example.seedbe.domain.project.repository.ProjectStepRepository;
 import com.example.seedbe.domain.prompt.entity.PromptTemplate;
 import com.example.seedbe.domain.prompt.repository.PromptTemplateRepository;
+import com.example.seedbe.domain.result.entity.ProjectStepResult;
+import com.example.seedbe.domain.result.repository.ProjectStepResultRepository;
 import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
@@ -42,6 +44,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectStepRepository stepRepository;
     private final PromptTemplateRepository templateRepository;
+    private final ProjectStepResultRepository resultRepository;
     private final PdfService pdfService;
     private final AIService aiService;
     private final TransactionTemplate transactionTemplate;
@@ -70,8 +73,8 @@ public class ProjectService {
 
         List<ProjectStep> steps = stepRepository.findByProjectOrderByStepOrderAsc(project);
         ProjectProgress progress = calculateProgress(steps);
-        List<ProjectStepSummaryResponse> stepResponses = steps.stream()
-                .map(ProjectStepSummaryResponse::from)
+        List<ProjectStepResponse> stepResponses = steps.stream()
+                .map(ProjectStepResponse::from)
                 .toList();
 
         return ProjectDetailResponse.of(project, progress.currentRoadmapStep(), progress.currentStepOrder(),
@@ -111,7 +114,7 @@ public class ProjectService {
                                    int totalStepCount, int completedStepCount, int progressPercent) {
     }
 
-    public ProjectSummaryResponse createProject(User user, ProjectCreateRequest projectCreateRequest) {
+    public ProjectResponse createProject(User user, ProjectCreateRequest projectCreateRequest) {
         // PDF parsing과 Gemini 호출은 DB transaction 밖에서 먼저 끝낸다.
         PdfService.PdfParseResult pdfParseResult = pdfService.parse(projectCreateRequest.files());
         String desiredOutcome = projectCreateRequest.desiredOutcome();
@@ -134,7 +137,7 @@ public class ProjectService {
         return transactionTemplate.execute(status -> saveProject(user, projectCreateRequest, extractedVariables));
     }
 
-    private ProjectSummaryResponse saveProject(
+    private ProjectResponse saveProject(
             User user,
             ProjectCreateRequest projectCreateRequest,
             Map<String, Object> extractedVariables
@@ -164,7 +167,7 @@ public class ProjectService {
                         .build())
                 .toList();
         stepRepository.saveAll(steps);
-        return ProjectSummaryResponse.from(savedProject);
+        return ProjectResponse.from(savedProject);
     }
 
     private void validateTemplates(Project project, List<PromptTemplate> templates) {
@@ -194,9 +197,14 @@ public class ProjectService {
     public void completeProject(UUID userId, UUID projectId) {
         Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
 
-        ProjectStep lastStep = stepRepository.findByProjectAndRoadmapStepWithDetails(
+        ProjectStep lastStep = stepRepository.findByProjectAndRoadmapStep(
                         project, project.getRoadmapType().getLastStep())
                 .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
+        ProjectStepResult result = resultRepository.findByStep(lastStep)
+                .orElseThrow(() -> new BusinessException(ErrorType.GENERATED_RESULT_NOT_FOUND));
+        if (result.getContentMarkdown() == null || result.getContentMarkdown().isBlank()) {
+            throw new BusinessException(ErrorType.GENERATED_RESULT_NOT_FOUND);
+        }
 
         project.complete(lastStep);
     }
