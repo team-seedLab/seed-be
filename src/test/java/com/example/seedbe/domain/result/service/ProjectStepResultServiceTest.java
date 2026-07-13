@@ -8,7 +8,6 @@ import com.example.seedbe.domain.project.enums.ProjectStepStatus;
 import com.example.seedbe.domain.project.enums.RoadmapStep;
 import com.example.seedbe.domain.project.enums.RoadmapType;
 import com.example.seedbe.domain.project.repository.ProjectStepRepository;
-import com.example.seedbe.domain.prompt.entity.ProjectStepPrompt;
 import com.example.seedbe.domain.prompt.entity.PromptTemplate;
 import com.example.seedbe.domain.prompt.repository.ProjectStepPromptRepository;
 import com.example.seedbe.domain.result.dto.ProjectStepResultResponse;
@@ -48,7 +47,7 @@ class ProjectStepResultServiceTest {
         ProjectStep step = createStep(project);
         step.start();
         stubLockedStep(project, step);
-        when(promptRepository.findByStep(step)).thenReturn(Optional.of(createPrompt(step)));
+        when(promptRepository.existsByStep(step)).thenReturn(true);
         when(resultRepository.findByStep(step)).thenReturn(Optional.empty());
         when(resultRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -66,7 +65,7 @@ class ProjectStepResultServiceTest {
         ProjectStep step = createStep(project);
         ProjectStepResult result = ProjectStepResult.builder().step(step).contentMarkdown("old").build();
         stubLockedStep(project, step);
-        when(promptRepository.findByStep(step)).thenReturn(Optional.of(createPrompt(step)));
+        when(promptRepository.existsByStep(step)).thenReturn(true);
         when(resultRepository.findByStep(step)).thenReturn(Optional.of(result));
         when(resultRepository.saveAndFlush(result)).thenReturn(result);
 
@@ -94,7 +93,7 @@ class ProjectStepResultServiceTest {
         Project project = createProject();
         ProjectStep step = createStep(project);
         stubLockedStep(project, step);
-        when(promptRepository.findByStep(step)).thenReturn(Optional.empty());
+        when(promptRepository.existsByStep(step)).thenReturn(false);
 
         assertThatThrownBy(() -> service().saveResult(
                 userId, projectId, "constraint_analysis", "result"))
@@ -140,10 +139,6 @@ class ProjectStepResultServiceTest {
     private ProjectStep createStep(Project project) {
         return ProjectStep.builder().project(project).promptTemplate(org.mockito.Mockito.mock(PromptTemplate.class))
                 .roadmapStep(RoadmapStep.CONSTRAINT_ANALYSIS).stepOrder(1).build();
-    }
-
-    private ProjectStepPrompt createPrompt(ProjectStep step) {
-        return ProjectStepPrompt.builder().step(step).providedPromptSnapshot("prompt").build();
     }
 
     private void stubContext(Project project) {

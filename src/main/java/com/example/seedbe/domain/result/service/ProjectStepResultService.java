@@ -32,7 +32,7 @@ public class ProjectStepResultService {
         ProjectStep step = stepRepository.findByProjectAndRoadmapStepForUpdate(
                         context.project(), context.step())
                 .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
-        if (promptRepository.findByStep(step).isEmpty()) {
+        if (!promptRepository.existsByStep(step)) {
             throw new BusinessException(ErrorType.GENERATED_PROMPT_NOT_FOUND);
         }
 
