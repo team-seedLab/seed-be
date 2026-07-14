@@ -37,6 +37,13 @@ public interface ProjectStepRepository extends JpaRepository<ProjectStep, UUID> 
 
     List<ProjectStep> findByProjectOrderByStepOrderAsc(Project project);
 
+    @Query("""
+        SELECT ps FROM ProjectStep ps
+        WHERE ps.project IN :projects
+        ORDER BY ps.project.projectId ASC, ps.stepOrder ASC
+    """)
+    List<ProjectStep> findByProjectsOrderByStepOrderAsc(@Param("projects") List<Project> projects);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT ps FROM ProjectStep ps

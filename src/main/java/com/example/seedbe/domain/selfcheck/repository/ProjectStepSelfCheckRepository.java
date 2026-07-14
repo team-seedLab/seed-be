@@ -4,6 +4,7 @@ import com.example.seedbe.domain.project.entity.ProjectStep;
 import com.example.seedbe.domain.selfcheck.entity.ProjectStepSelfCheck;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,4 +12,6 @@ public interface ProjectStepSelfCheckRepository extends JpaRepository<ProjectSte
     Optional<ProjectStepSelfCheck> findByStep(ProjectStep step);
 
     boolean existsByStep(ProjectStep step);
+
+    List<ProjectStepSelfCheck> findByStepIn(List<ProjectStep> steps);
 }

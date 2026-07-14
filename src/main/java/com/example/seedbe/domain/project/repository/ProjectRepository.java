@@ -7,15 +7,30 @@ import com.example.seedbe.domain.project.enums.ProjectStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import jakarta.persistence.LockModeType;
 
 public interface ProjectRepository extends JpaRepository<Project, UUID> {
     @Query("SELECT p FROM Project p JOIN FETCH p.user WHERE p.projectId = :projectId")
     Optional<Project> findByIdWithUser(@Param("projectId") UUID projectId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Project p JOIN FETCH p.user WHERE p.projectId = :projectId")
+    Optional<Project> findByIdWithUserForUpdate(@Param("projectId") UUID projectId);
+
+    @Query("""
+        SELECT p FROM Project p
+        JOIN FETCH p.user
+        WHERE p.user.userId IN :studentIds
+        ORDER BY p.updatedAt DESC, p.projectId ASC
+    """)
+    List<Project> findAllByStudentIds(@Param("studentIds") List<UUID> studentIds);
 
     @Query("""
         SELECT p FROM Project p 
