@@ -55,7 +55,10 @@ public enum ErrorType {
     SELF_CHECK_NOT_FOUND(HttpStatus.BAD_REQUEST, "SC001", "해당 단계의 이해 확인 답변을 등록해야 합니다."),
     SELF_CHECK_ANSWER_TOO_SHORT(HttpStatus.BAD_REQUEST, "SC002", "각 이해 확인 답변은 공백을 제외하고 10자 이상이어야 합니다."),
     PREVIOUS_STEP_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "SC003", "이전 단계의 결과물과 이해 확인을 먼저 완료해야 합니다."),
-    INVALID_SELF_CHECK_ITEMS(HttpStatus.BAD_REQUEST, "SC004", "정해진 이해 확인 문항에 모두 답변해야 합니다.");
+    INVALID_SELF_CHECK_ITEMS(HttpStatus.BAD_REQUEST, "SC004", "정해진 이해 확인 문항에 모두 답변해야 합니다."),
+
+    // [Mentor] 멘토 학생 및 프로젝트 검토 관련
+    MENTOR_STUDENT_NOT_ASSIGNED(HttpStatus.FORBIDDEN, "M001", "배정된 학생의 프로젝트만 조회할 수 있습니다.");
 
 
     private final HttpStatus httpStatus;
