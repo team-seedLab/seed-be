@@ -16,6 +16,8 @@ import jakarta.persistence.LockModeType;
 public interface ProjectStepRepository extends JpaRepository<ProjectStep, UUID> {
     Optional<ProjectStep> findByProjectAndRoadmapStep(Project project, RoadmapStep roadmapStep);
 
+    Optional<ProjectStep> findByProjectAndStepOrder(Project project, Integer stepOrder);
+
     @Query("""
         SELECT ps FROM ProjectStep ps
         JOIN FETCH ps.promptTemplate

@@ -5,6 +5,7 @@ import com.example.seedbe.domain.project.component.ProjectContext;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.entity.ProjectStep;
 import com.example.seedbe.domain.project.enums.RoadmapStep;
+import com.example.seedbe.domain.project.enums.ProjectStepStatus;
 import com.example.seedbe.domain.project.repository.ProjectStepRepository;
 import com.example.seedbe.domain.prompt.component.PromptDiffCalculator;
 import com.example.seedbe.domain.prompt.component.PromptVariableResolver;
@@ -12,6 +13,7 @@ import com.example.seedbe.domain.prompt.component.StepPromptComposer;
 import com.example.seedbe.domain.prompt.dto.ProjectStepPromptResponse;
 import com.example.seedbe.domain.prompt.entity.ProjectStepPrompt;
 import com.example.seedbe.domain.prompt.repository.ProjectStepPromptRepository;
+import com.example.seedbe.domain.selfcheck.repository.ProjectStepSelfCheckRepository;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class ProjectStepPromptService {
     private final ProjectValidator projectValidator;
     private final ProjectStepRepository stepRepository;
     private final ProjectStepPromptRepository promptRepository;
+    private final ProjectStepSelfCheckRepository selfCheckRepository;
     private final PromptDiffCalculator promptDiffCalculator;
     private final PromptVariableResolver promptVariableResolver;
     private final StepPromptComposer stepPromptComposer;
@@ -41,6 +44,7 @@ public class ProjectStepPromptService {
             step.start();
             return ProjectStepPromptResponse.of(step, existingPrompt.get());
         }
+        validatePreviousStepCompleted(project, step);
 
         String providedPrompt = ProjectContext.isRawDocument(project.getInitialContext())
                 ? stepPromptComposer.compose(step.getRoadmapStep())
@@ -84,6 +88,18 @@ public class ProjectStepPromptService {
         return stepRepository.findByProjectAndRoadmapStepWithPromptTemplateForUpdate(
                         context.project(), context.step())
                 .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
+    }
+
+    private void validatePreviousStepCompleted(Project project, ProjectStep step) {
+        if (step.getStepOrder() == 1) {
+            return;
+        }
+        ProjectStep previousStep = stepRepository.findByProjectAndStepOrder(project, step.getStepOrder() - 1)
+                .orElseThrow(() -> new BusinessException(ErrorType.INVALID_ROADMAP_TEMPLATE));
+        if (previousStep.getStatus() != ProjectStepStatus.COMPLETED
+                || !selfCheckRepository.existsByStep(previousStep)) {
+            throw new BusinessException(ErrorType.PREVIOUS_STEP_NOT_COMPLETED);
+        }
     }
 
     private ValidatedContext validateAndGetContext(UUID userId, UUID projectId, String stepCodeStr) {

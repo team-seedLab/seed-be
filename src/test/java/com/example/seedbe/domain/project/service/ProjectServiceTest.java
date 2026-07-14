@@ -18,6 +18,7 @@ import com.example.seedbe.domain.prompt.entity.PromptTemplate;
 import com.example.seedbe.domain.prompt.repository.PromptTemplateRepository;
 import com.example.seedbe.domain.result.repository.ProjectStepResultRepository;
 import com.example.seedbe.domain.result.entity.ProjectStepResult;
+import com.example.seedbe.domain.selfcheck.repository.ProjectStepSelfCheckRepository;
 import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.domain.user.enums.Role;
 import com.example.seedbe.global.exception.BusinessException;
@@ -56,6 +57,7 @@ class ProjectServiceTest {
     @Mock private ProjectStepRepository stepRepository;
     @Mock private PromptTemplateRepository templateRepository;
     @Mock private ProjectStepResultRepository resultRepository;
+    @Mock private ProjectStepSelfCheckRepository selfCheckRepository;
     @Mock private PdfService pdfService;
     @Mock private TransactionTemplate transactionTemplate;
     @Mock private TransactionStatus transactionStatus;
@@ -236,7 +238,7 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("마지막 단계 결과물이 있으면 프로젝트를 완료한다.")
+    @DisplayName("마지막 단계 결과물과 이해 확인이 있으면 프로젝트를 완료한다.")
     void completeProjectWithSavedLastResult() {
         UUID userId = UUID.randomUUID();
         UUID projectId = UUID.randomUUID();
@@ -249,6 +251,7 @@ class ProjectServiceTest {
         when(stepRepository.findByProjectAndRoadmapStep(project, RoadmapStep.REPORT_REVISION))
                 .thenReturn(Optional.of(lastStep));
         when(resultRepository.findByStep(lastStep)).thenReturn(Optional.of(result));
+        when(selfCheckRepository.existsByStep(lastStep)).thenReturn(true);
 
         service().completeProject(userId, projectId);
 
@@ -256,9 +259,30 @@ class ProjectServiceTest {
         assertThat(project.getCompletedAt()).isNotNull();
     }
 
+    @Test
+    @DisplayName("마지막 단계 이해 확인이 없으면 프로젝트를 완료할 수 없다.")
+    void completeProjectRejectsMissingSelfCheck() {
+        UUID userId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        Project project = createProject();
+        ProjectStep lastStep = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
+                .roadmapStep(RoadmapStep.REPORT_REVISION).stepOrder(4).build();
+        ProjectStepResult result = ProjectStepResult.builder()
+                .step(lastStep).contentMarkdown("# 최종 결과").build();
+        when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
+        when(stepRepository.findByProjectAndRoadmapStep(project, RoadmapStep.REPORT_REVISION))
+                .thenReturn(Optional.of(lastStep));
+        when(resultRepository.findByStep(lastStep)).thenReturn(Optional.of(result));
+        when(selfCheckRepository.existsByStep(lastStep)).thenReturn(false);
+
+        assertThatThrownBy(() -> service().completeProject(userId, projectId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorType").isEqualTo(ErrorType.SELF_CHECK_NOT_FOUND);
+    }
+
     private ProjectService service() {
         return new ProjectService(projectValidator, projectRepository, stepRepository, templateRepository,
-                resultRepository, pdfService, transactionTemplate);
+                resultRepository, selfCheckRepository, pdfService, transactionTemplate);
     }
 
     private Project createProject() {
