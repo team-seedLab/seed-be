@@ -22,7 +22,7 @@ import java.util.Locale;
 public class PdfService {
     private static final int MAX_FILE_COUNT = 3;
     private static final long MAX_FILE_SIZE = 20L * 1024 * 1024;
-    static final int MAX_EXTRACTED_TEXT_LENGTH = 100_000;
+    static final int MAX_EXTRACTED_TEXT_LENGTH = 300_000;
     private static final byte[] PDF_SIGNATURE = {'%', 'P', 'D', 'F', '-'};
 
     private final PdfDocumentTextExtractor pdfDocumentTextExtractor;

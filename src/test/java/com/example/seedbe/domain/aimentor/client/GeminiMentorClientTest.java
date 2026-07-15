@@ -40,11 +40,16 @@ class GeminiMentorClientTest {
 
         assertThat(instruction)
                 .contains("REASK_WITH_EDITED_PROMPT")
+                .contains("현재 질문과 질문에 지정된 출력 조건에 먼저 직접 답한다")
+                .contains("일반 지식과 상세 설명도 제공한다")
+                .contains("제출용 과제 완성본은 대신 쓰지 않고")
+                .contains("### 질문에 대한 답변")
                 .contains("### 다음 질문 가이드")
                 .contains("- 보완할 정보:")
                 .contains("- 이렇게 질문해 보세요:")
                 .contains("- 프롬프트 수정 방향:")
-                .contains("이 섹션 뒤에는 다른 내용을 쓰지 않는다");
+                .contains("다음 질문 가이드를 답변의 마지막에 둔다")
+                .hasSizeLessThan(1_500);
     }
 
     @Test
@@ -74,7 +79,7 @@ class GeminiMentorClientTest {
         String response = """
                 {
                   "candidates": [{
-                    "content": {"parts": [{"text": "핵심 답변\\n\\n### 다음 질문 가이드\\n- 보완할 정보: 적용 대상\\n- 이렇게 질문해 보세요: \\"적용 대상을 어떻게 정하나요?\\"\\n- 프롬프트 수정 방향: 대상과 범위를 명시하세요."}]},
+                    "content": {"parts": [{"text": "### 질문에 대한 답변\\n핵심 답변\\n\\n### 다음 질문 가이드\\n- 보완할 정보: 적용 대상\\n- 이렇게 질문해 보세요: \\"적용 대상을 어떻게 정하나요?\\"\\n- 프롬프트 수정 방향: 대상과 범위를 명시하세요."}]},
                     "finishReason": "STOP"
                   }],
                   "usageMetadata": {
@@ -87,7 +92,7 @@ class GeminiMentorClientTest {
 
         AiMentorClient.AiMentorReply reply = client.parseResponse(response);
 
-        assertThat(reply.content()).contains("핵심 답변", "### 다음 질문 가이드");
+        assertThat(reply.content()).contains("### 질문에 대한 답변", "핵심 답변", "### 다음 질문 가이드");
         assertThat(reply.inputTokens()).isEqualTo(100);
         assertThat(reply.outputTokens()).isEqualTo(20);
         assertThat(reply.totalTokens()).isEqualTo(120);
@@ -115,6 +120,22 @@ class GeminiMentorClientTest {
                 {
                   "candidates": [{
                     "content": {"parts": [{"text": "형식 없이 끝난 답변"}]},
+                    "finishReason": "STOP"
+                  }]
+                }
+                """;
+
+        assertThatThrownBy(() -> client.parseResponse(response))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorType").isEqualTo(ErrorType.AI_MENTOR_RESPONSE_FORMAT_ERROR);
+    }
+
+    @Test
+    void rejectsAnswerWithoutRequiredQuestionAnswerSection() {
+        String response = """
+                {
+                  "candidates": [{
+                    "content": {"parts": [{"text": "핵심 답변\\n\\n### 다음 질문 가이드\\n- 보완할 정보: 적용 대상\\n- 이렇게 질문해 보세요: 질문\\n- 프롬프트 수정 방향: 범위를 추가하세요."}]},
                     "finishReason": "STOP"
                   }]
                 }

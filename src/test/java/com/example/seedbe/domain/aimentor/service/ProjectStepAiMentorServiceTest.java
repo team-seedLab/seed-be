@@ -24,6 +24,7 @@ import com.example.seedbe.global.exception.ErrorType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
@@ -42,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -85,6 +87,11 @@ class ProjectStepAiMentorServiceTest {
         assertThat(responses.get(0).turnId()).isEqualTo(responses.get(1).turnId());
         assertThat(responses.get(1).totalTokens()).isEqualTo(20);
         verify(transactionTemplate, times(2)).execute(any());
+        InOrder callOrder = inOrder(transactionTemplate, contextRetriever, aiMentorClient);
+        callOrder.verify(transactionTemplate).execute(any());
+        callOrder.verify(contextRetriever).retrieve(any(), any());
+        callOrder.verify(aiMentorClient).ask(any(), any(), any());
+        callOrder.verify(transactionTemplate).execute(any());
     }
 
     @Test
@@ -116,6 +123,11 @@ class ProjectStepAiMentorServiceTest {
         assertThat(captor.getValue().recentMessages())
                 .extracting(AiMentorClient.ConversationMessage::content)
                 .containsExactly("old", "new");
+        ArgumentCaptor<ProjectContextRetriever.RetrievalQuery> queryCaptor =
+                ArgumentCaptor.forClass(ProjectContextRetriever.RetrievalQuery.class);
+        verify(contextRetriever).retrieve(any(), queryCaptor.capture());
+        assertThat(queryCaptor.getValue().question()).isEqualTo("now");
+        assertThat(queryCaptor.getValue().stepDescription()).isEqualTo("제약사항 분석");
     }
 
     @Test

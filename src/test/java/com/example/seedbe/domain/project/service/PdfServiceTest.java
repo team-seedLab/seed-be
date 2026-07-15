@@ -86,10 +86,13 @@ class PdfServiceTest {
     }
 
     @Test
-    @DisplayName("정규화된 PDF context는 최대 길이를 넘지 않는다.")
+    @DisplayName("정규화된 PDF 원문은 40페이지 문서를 수용할 수 있는 최대 길이를 넘지 않는다.")
     void normalizeAndLimitCapsContextLength() {
-        String result = textNormalizer.normalizeAndLimit("a".repeat(100_100), 100_000);
-        assertThat(result).hasSize(100_000);
+        String result = textNormalizer.normalizeAndLimit(
+                "a".repeat(PdfService.MAX_EXTRACTED_TEXT_LENGTH + 100),
+                PdfService.MAX_EXTRACTED_TEXT_LENGTH);
+
+        assertThat(result).hasSize(PdfService.MAX_EXTRACTED_TEXT_LENGTH);
     }
 
     @Test

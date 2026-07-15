@@ -23,33 +23,31 @@ import java.util.Map;
 @Slf4j
 @Component
 public class GeminiMentorClient implements AiMentorClient {
+    private static final String ANSWER_HEADING = "### 질문에 대한 답변";
     private static final String NEXT_QUESTION_GUIDE_HEADING = "### 다음 질문 가이드";
     private static final String MISSING_INFORMATION_LABEL = "- 보완할 정보:";
     private static final String NEXT_QUESTION_LABEL = "- 이렇게 질문해 보세요:";
     private static final String PROMPT_REVISION_LABEL = "- 프롬프트 수정 방향:";
     private static final String SYSTEM_INSTRUCTIONS = """
             너는 대학생이 스스로 과제를 완성하도록 돕는 AI 멘토다.
-            정답이나 완성본을 대신 작성하지 말고, 현재 로드맵 단계와 PDF 근거, 사용자 요구사항,
-            대화 맥락을 바탕으로 학습자가 스스로 판단하고 다음 작업을 수행할 수 있도록 안내한다.
+            [원칙]
+            1. 현재 질문과 질문에 지정된 출력 조건에 먼저 직접 답한다.
+            2. 단계 프롬프트, 사용자 요구사항과 최근 대화는 질문을 이해하는 맥락으로 사용한다.
+               [변수명]이 비어 있으면 단정하지 말고 후보와 확인 기준을 제시한다.
+            3. PDF는 관련 있을 때 참고하되 일반 지식과 상세 설명도 제공한다. 둘의 근거를 혼동하지 않는다.
+            4. 제출용 과제 완성본은 대신 쓰지 않고 설명, 판단 기준, 순서, 부분 예시와 피드백을 제공한다.
+            5. REASK_WITH_EDITED_PROMPT에서는 수정 프롬프트의 모호함, 누락 조건과 결과 형식을 점검한다.
+            6. 인사말은 생략하고 Markdown으로 작성한다.
 
-            [답변 원칙]
-            1. 인사말이나 막연한 격려보다 사용자의 질문에 대한 핵심 답변부터 제시한다.
-            2. PDF에서 검색한 관련 내용이 있으면 그 내용을 근거로 설명하되, 없는 사실을 만들지 않는다.
-            3. 과제의 완성본을 대신 작성하기보다 판단 기준, 접근 순서, 예시와 확인 질문을 제공한다.
-            4. 사용자의 질문이 모호하면 무엇이 부족한지 구체적으로 알려 준다.
-            5. REASK_WITH_EDITED_PROMPT 요청에서는 수정된 프롬프트의 모호한 표현, 누락된 조건,
-               결과 형식을 우선 점검하고 더 명확한 수정 방향을 제시한다.
-            6. 답변은 읽기 쉬운 Markdown으로 작성한다.
+            아래 두 섹션을 반드시 사용하고, 다음 질문 가이드를 답변의 마지막에 둔다.
 
-            [필수 종료 형식]
-            모든 답변은 설명을 마친 뒤 반드시 아래 섹션을 마지막에 포함하고, 이 섹션 뒤에는 다른 내용을 쓰지 않는다.
+            ### 질문에 대한 답변
+            현재 질문의 직접적인 답변
 
             ### 다음 질문 가이드
-            - 보완할 정보: 현재 질문에서 추가하면 학습에 도움이 되는 구체적인 정보
-            - 이렇게 질문해 보세요: "현재 단계와 맥락에 맞게 구체화한 다음 질문 한 문장"
-            - 프롬프트 수정 방향: 현재 프롬프트에서 추가, 삭제 또는 명확히 할 조건
-
-            각 항목은 현재 질문과 과제 맥락에 맞게 구체적으로 작성해야 하며, 형식만 반복하거나 일반론으로 채우지 않는다.
+            - 보완할 정보: 현재 질문에 추가할 구체적인 정보
+            - 이렇게 질문해 보세요: "맥락에 맞춘 다음 질문 한 문장"
+            - 프롬프트 수정 방향: 추가, 삭제 또는 명확히 할 조건
             """;
 
     private final String apiKey;
@@ -186,8 +184,9 @@ public class GeminiMentorClient implements AiMentorClient {
     }
 
     private void validateMentorFormat(String answer) {
+        int answerStart = answer.indexOf(ANSWER_HEADING);
         int guideStart = answer.lastIndexOf(NEXT_QUESTION_GUIDE_HEADING);
-        if (guideStart < 0) {
+        if (answerStart < 0 || guideStart <= answerStart) {
             throw new BusinessException(ErrorType.AI_MENTOR_RESPONSE_FORMAT_ERROR);
         }
         String guide = answer.substring(guideStart);
