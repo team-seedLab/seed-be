@@ -47,7 +47,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 20MB
-      max-request-size: 60MB
+      max-request-size: 45MB
 
 logging:
   level:
@@ -64,7 +64,7 @@ oauth2:
 gemini:
   api:
     key: ${GEMINI_API_KEY}
-    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent
+    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent
 
 springdoc:
   swagger-ui:

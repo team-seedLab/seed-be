@@ -59,6 +59,31 @@ class PdfServiceTest {
     }
 
     @Test
+    @DisplayName("프로젝트에 PDF 파일 두 개를 업로드할 수 있다.")
+    void parseAcceptsTwoPdfFiles() throws Exception {
+        byte[] pdf = Files.readAllBytes(Path.of("src/test/resources/fixtures/text-assignment.pdf"));
+        MockMultipartFile first = new MockMultipartFile(
+                "files", "first.pdf", "application/pdf", pdf);
+        MockMultipartFile second = new MockMultipartFile(
+                "files", "second.pdf", "application/pdf", pdf);
+
+        PdfService.PdfParseResult result = createPdfService().parse(List.of(first, second));
+
+        assertThat(result.text()).contains("[문서 1 시작]", "[문서 2 시작]");
+    }
+
+    @Test
+    @DisplayName("프로젝트에 PDF 파일을 세 개 이상 업로드할 수 없다.")
+    void parseRejectsMoreThanTwoPdfFiles() {
+        MockMultipartFile file = new MockMultipartFile(
+                "files", "assignment.pdf", "application/pdf", new byte[]{1});
+
+        assertThatThrownBy(() -> createPdfService().parse(List.of(file, file, file)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorType").isEqualTo(ErrorType.MAX_FILE_COUNT_EXCEEDED);
+    }
+
+    @Test
     @DisplayName("확장자만 PDF인 파일은 signature 검증에서 거부한다.")
     void parseRejectsInvalidPdfSignature() {
         MockMultipartFile file = new MockMultipartFile(
@@ -86,10 +111,13 @@ class PdfServiceTest {
     }
 
     @Test
-    @DisplayName("정규화된 PDF context는 최대 길이를 넘지 않는다.")
+    @DisplayName("정규화된 PDF 원문은 40페이지 문서를 수용할 수 있는 최대 길이를 넘지 않는다.")
     void normalizeAndLimitCapsContextLength() {
-        String result = textNormalizer.normalizeAndLimit("a".repeat(100_100), 100_000);
-        assertThat(result).hasSize(100_000);
+        String result = textNormalizer.normalizeAndLimit(
+                "a".repeat(PdfService.MAX_EXTRACTED_TEXT_LENGTH + 100),
+                PdfService.MAX_EXTRACTED_TEXT_LENGTH);
+
+        assertThat(result).hasSize(PdfService.MAX_EXTRACTED_TEXT_LENGTH);
     }
 
     @Test

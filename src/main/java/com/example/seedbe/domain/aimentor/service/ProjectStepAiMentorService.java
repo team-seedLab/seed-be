@@ -66,8 +66,9 @@ public class ProjectStepAiMentorService {
         }
 
         try {
+            AiMentorClient.AiMentorContext aiContext = buildAiContext(preparedTurn.contextSource(), question);
             AiMentorClient.AiMentorReply reply = aiMentorClient.ask(
-                    preparedTurn.context(), question, messageType);
+                    aiContext, question, messageType);
             List<AiMessageResponse> completedTurn = transactionTemplate.execute(
                     status -> completeTurn(preparedTurn, reply));
             if (completedTurn == null) {
@@ -99,19 +100,13 @@ public class ProjectStepAiMentorService {
         String finalPrompt = prompt.getEditedPrompt() == null
                 ? prompt.getProvidedPromptSnapshot()
                 : prompt.getEditedPrompt();
-        String retrievalQuery = String.join("\n",
-                question,
-                step.getRoadmapStep().getDescription(),
+        ContextSource contextSource = new ContextSource(
                 finalPrompt,
-                valueOrEmpty(project.getKeyFocus()),
-                valueOrEmpty(project.getRequiredElements()));
-        String relevantSource = contextRetriever.retrieve(project.getInitialContext(), retrievalQuery);
-        AiMentorClient.AiMentorContext context = new AiMentorClient.AiMentorContext(
-                finalPrompt,
-                relevantSource,
+                project.getInitialContext(),
                 project.getDesiredOutcome(),
                 project.getKeyFocus(),
                 project.getRequiredElements(),
+                step.getRoadmapStep().getDescription(),
                 recentMessages);
 
         UUID turnId = UUID.randomUUID();
@@ -128,8 +123,24 @@ public class ProjectStepAiMentorService {
                 step.getStepId(),
                 messageType,
                 AiMessageResponse.from(userMessage),
-                context
+                contextSource
         );
+    }
+
+    private AiMentorClient.AiMentorContext buildAiContext(ContextSource source, String question) {
+        ProjectContextRetriever.RetrievalQuery retrievalQuery = new ProjectContextRetriever.RetrievalQuery(
+                question,
+                source.stepDescription(),
+                source.keyFocus(),
+                source.requiredElements());
+        String relevantSource = contextRetriever.retrieve(source.initialContext(), retrievalQuery);
+        return new AiMentorClient.AiMentorContext(
+                source.finalPrompt(),
+                relevantSource,
+                source.desiredOutcome(),
+                source.keyFocus(),
+                source.requiredElements(),
+                source.recentMessages());
     }
 
     private List<AiMessageResponse> completeTurn(PreparedTurn preparedTurn,
@@ -223,10 +234,6 @@ public class ProjectStepAiMentorService {
         return conversation;
     }
 
-    private String valueOrEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
     private record ValidatedContext(Project project, ProjectStep step) {
     }
 
@@ -235,7 +242,18 @@ public class ProjectStepAiMentorService {
             UUID stepId,
             AiMessageType messageType,
             AiMessageResponse userMessage,
-            AiMentorClient.AiMentorContext context
+            ContextSource contextSource
+    ) {
+    }
+
+    private record ContextSource(
+            String finalPrompt,
+            Map<String, Object> initialContext,
+            String desiredOutcome,
+            String keyFocus,
+            String requiredElements,
+            String stepDescription,
+            List<AiMentorClient.ConversationMessage> recentMessages
     ) {
     }
 
