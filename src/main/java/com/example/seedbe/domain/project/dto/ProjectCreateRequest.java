@@ -25,7 +25,7 @@ public record ProjectCreateRequest(
         @Size(max = 2000, message = "필수 포함 요소는 2000자를 초과할 수 없습니다.")
         String requiredElements,
 
-        @Schema(description = "분석할 과제 PDF 파일들 (최대 3개)")
+        @Schema(description = "분석할 과제 PDF 파일들 (최대 2개)")
         List<MultipartFile> files
 ) {
 }
