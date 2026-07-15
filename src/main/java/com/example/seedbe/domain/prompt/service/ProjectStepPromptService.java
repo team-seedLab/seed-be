@@ -32,7 +32,7 @@ public class ProjectStepPromptService {
     public ProjectStepPromptResponse createPrompt(UUID userId, UUID projectId, String stepCodeStr) {
         ValidatedContext context = validateAndGetContext(userId, projectId, stepCodeStr);
         Project project = context.project();
-        ProjectStep step = getStepForUpdate(context);
+        ProjectStep step = getStepWithPromptTemplateForUpdate(context);
 
         var existingPrompt = promptRepository.findByStep(step);
         if (existingPrompt.isPresent()) {
@@ -55,7 +55,7 @@ public class ProjectStepPromptService {
     @Transactional(readOnly = true)
     public ProjectStepPromptResponse getPrompt(UUID userId, UUID projectId, String stepCodeStr) {
         ValidatedContext context = validateAndGetContext(userId, projectId, stepCodeStr);
-        ProjectStep step = stepRepository.findByProjectAndRoadmapStepWithPromptTemplate(
+        ProjectStep step = stepRepository.findByProjectAndRoadmapStep(
                         context.project(), context.step())
                 .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
         ProjectStepPrompt prompt = promptRepository.findByStep(step)
@@ -77,6 +77,12 @@ public class ProjectStepPromptService {
     }
 
     private ProjectStep getStepForUpdate(ValidatedContext context) {
+        return stepRepository.findByProjectAndRoadmapStepForUpdate(
+                        context.project(), context.step())
+                .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
+    }
+
+    private ProjectStep getStepWithPromptTemplateForUpdate(ValidatedContext context) {
         return stepRepository.findByProjectAndRoadmapStepWithPromptTemplateForUpdate(
                         context.project(), context.step())
                 .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));

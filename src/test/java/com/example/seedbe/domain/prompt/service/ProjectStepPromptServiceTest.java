@@ -47,7 +47,7 @@ class ProjectStepPromptServiceTest {
     void createsProvidedPromptAndStartsStep() {
         Project project = createProject();
         ProjectStep step = createStep(project);
-        stubLockedStep(project, step);
+        stubStepWithPromptTemplateForUpdate(project, step);
         when(promptRepository.findByStep(step)).thenReturn(Optional.empty());
         when(promptTemplate.getActionPrompt()).thenReturn("주제: [topic]");
 
@@ -64,7 +64,7 @@ class ProjectStepPromptServiceTest {
     void storesActionPromptWithoutEmbeddingProjectContext() {
         Project project = createProject();
         ProjectStep step = createStep(project);
-        stubLockedStep(project, step);
+        stubStepWithPromptTemplateForUpdate(project, step);
         when(promptRepository.findByStep(step)).thenReturn(Optional.empty());
         when(promptTemplate.getActionPrompt()).thenReturn("핵심 개념: [핵심 개념]");
 
@@ -80,7 +80,7 @@ class ProjectStepPromptServiceTest {
         Project project = createProject();
         ProjectStep step = createStep(project);
         ProjectStepPrompt prompt = createPrompt(step, "provided");
-        stubLockedStep(project, step);
+        stubStepWithPromptTemplateForUpdate(project, step);
         when(promptRepository.findByStep(step)).thenReturn(Optional.of(prompt));
 
         ProjectStepPromptResponse response = service().createPrompt(
@@ -111,7 +111,7 @@ class ProjectStepPromptServiceTest {
         Project project = createProject();
         ProjectStep step = createStep(project);
         ProjectStepPrompt prompt = createPrompt(step, "hello world");
-        stubLockedStep(project, step);
+        stubStepForUpdate(project, step);
         when(promptRepository.findByStep(step)).thenReturn(Optional.of(prompt));
 
         ProjectStepPromptResponse response = service().updatePrompt(
@@ -128,7 +128,7 @@ class ProjectStepPromptServiceTest {
     void rejectsUpdateBeforePromptCreation() {
         Project project = createProject();
         ProjectStep step = createStep(project);
-        stubLockedStep(project, step);
+        stubStepForUpdate(project, step);
         when(promptRepository.findByStep(step)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().updatePrompt(
@@ -215,16 +215,23 @@ class ProjectStepPromptServiceTest {
         when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
     }
 
-    private void stubLockedStep(Project project, ProjectStep step) {
+    private void stubStepWithPromptTemplateForUpdate(Project project, ProjectStep step) {
         stubContext(project);
         when(stepRepository.findByProjectAndRoadmapStepWithPromptTemplateForUpdate(
                 project, RoadmapStep.CONSTRAINT_ANALYSIS))
                 .thenReturn(Optional.of(step));
     }
 
+    private void stubStepForUpdate(Project project, ProjectStep step) {
+        stubContext(project);
+        when(stepRepository.findByProjectAndRoadmapStepForUpdate(
+                project, RoadmapStep.CONSTRAINT_ANALYSIS))
+                .thenReturn(Optional.of(step));
+    }
+
     private void stubStep(Project project, ProjectStep step) {
         stubContext(project);
-        when(stepRepository.findByProjectAndRoadmapStepWithPromptTemplate(
+        when(stepRepository.findByProjectAndRoadmapStep(
                 project, RoadmapStep.CONSTRAINT_ANALYSIS))
                 .thenReturn(Optional.of(step));
     }
