@@ -56,7 +56,8 @@ class ProjectStepPromptControllerTest {
         String path = "/api/projects/" + projectId + "/steps/constraint_analysis/prompt";
         mockMvc.perform(post(path))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.providedPromptSnapshot").value("provided"));
+                .andExpect(jsonPath("$.data.providedPromptSnapshot").value("provided"))
+                .andExpect(jsonPath("$.data.formatPrompt").doesNotExist());
         mockMvc.perform(get(path))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.finalPrompt").value("provided"));
@@ -75,7 +76,7 @@ class ProjectStepPromptControllerTest {
     private ProjectStepPromptResponse response(String editedPrompt, String finalPrompt,
                                                int addedCount, int removedCount) {
         return new ProjectStepPromptResponse(UUID.randomUUID(), "constraint_analysis", "제약사항 분석",
-                "provided", editedPrompt, finalPrompt, "format", addedCount, removedCount,
+                "provided", editedPrompt, finalPrompt, addedCount, removedCount,
                 Map.of("version", "PREFIX_SUFFIX_V1", "segments", java.util.List.of()), null, null);
     }
 

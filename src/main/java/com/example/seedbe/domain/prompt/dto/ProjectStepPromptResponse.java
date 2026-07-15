@@ -14,7 +14,6 @@ public record ProjectStepPromptResponse(
         String providedPromptSnapshot,
         String editedPrompt,
         String finalPrompt,
-        String formatPrompt,
         int addedCount,
         int removedCount,
         Map<String, Object> diffJson,
@@ -27,7 +26,7 @@ public record ProjectStepPromptResponse(
                 : prompt.getEditedPrompt();
         return new ProjectStepPromptResponse(step.getStepId(), step.getRoadmapStep().getStepCode(),
                 step.getRoadmapStep().getDescription(), prompt.getProvidedPromptSnapshot(),
-                prompt.getEditedPrompt(), finalPrompt, step.getPromptTemplate().getFormatPrompt(),
+                prompt.getEditedPrompt(), finalPrompt,
                 prompt.getAddedCount(), prompt.getRemovedCount(), prompt.getDiffJson(),
                 prompt.getCreatedAt(), prompt.getUpdatedAt());
     }

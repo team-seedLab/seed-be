@@ -1,10 +1,7 @@
 package com.example.seedbe.domain.prompt.service;
 
 import com.example.seedbe.domain.project.component.ProjectValidator;
-import com.example.seedbe.domain.project.component.ProjectContext;
 import com.example.seedbe.domain.prompt.component.PromptDiffCalculator;
-import com.example.seedbe.domain.prompt.component.PromptVariableResolver;
-import com.example.seedbe.domain.prompt.component.StepPromptComposer;
 import com.example.seedbe.domain.prompt.dto.ProjectStepPromptResponse;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.entity.ProjectStep;
@@ -53,34 +50,29 @@ class ProjectStepPromptServiceTest {
         stubLockedStep(project, step);
         when(promptRepository.findByStep(step)).thenReturn(Optional.empty());
         when(promptTemplate.getActionPrompt()).thenReturn("주제: [topic]");
-        when(promptTemplate.getFormatPrompt()).thenReturn("format");
 
         ProjectStepPromptResponse response = service().createPrompt(
                 userId, projectId, "constraint_analysis");
 
-        assertThat(response.providedPromptSnapshot()).isEqualTo("주제: 테스트 주제");
-        assertThat(response.finalPrompt()).isEqualTo("주제: 테스트 주제");
+        assertThat(response.providedPromptSnapshot()).isEqualTo("주제: [topic]");
+        assertThat(response.finalPrompt()).isEqualTo("주제: [topic]");
         assertThat(step.getStatus()).isEqualTo(ProjectStepStatus.IN_PROGRESS);
         verify(promptRepository).saveAndFlush(any(ProjectStepPrompt.class));
     }
 
     @Test
-    void createsShortPromptWithoutEmbeddingRawDocument() {
-        Project project = Project.builder().title("title").roadmapType(RoadmapType.REPORT)
-                .status(ProjectStatus.IN_PROGRESS)
-                .initialContext(ProjectContext.rawDocument("매우 긴 PDF 원문".repeat(1_000)))
-                .build();
+    void storesActionPromptWithoutEmbeddingProjectContext() {
+        Project project = createProject();
         ProjectStep step = createStep(project);
         stubLockedStep(project, step);
         when(promptRepository.findByStep(step)).thenReturn(Optional.empty());
-        when(promptTemplate.getFormatPrompt()).thenReturn("format");
+        when(promptTemplate.getActionPrompt()).thenReturn("핵심 개념: [핵심 개념]");
 
         ProjectStepPromptResponse response = service().createPrompt(
                 userId, projectId, "constraint_analysis");
 
-        assertThat(response.providedPromptSnapshot()).contains("제약사항 분석");
-        assertThat(response.providedPromptSnapshot()).doesNotContain("매우 긴 PDF 원문");
-        assertThat(response.providedPromptSnapshot()).hasSizeLessThan(500);
+        assertThat(response.providedPromptSnapshot()).isEqualTo("핵심 개념: [핵심 개념]");
+        assertThat(response.providedPromptSnapshot()).doesNotContain("테스트 주제");
     }
 
     @Test
@@ -90,7 +82,6 @@ class ProjectStepPromptServiceTest {
         ProjectStepPrompt prompt = createPrompt(step, "provided");
         stubLockedStep(project, step);
         when(promptRepository.findByStep(step)).thenReturn(Optional.of(prompt));
-        when(promptTemplate.getFormatPrompt()).thenReturn("format");
 
         ProjectStepPromptResponse response = service().createPrompt(
                 userId, projectId, "constraint_analysis");
@@ -107,7 +98,6 @@ class ProjectStepPromptServiceTest {
         ProjectStepPrompt prompt = createPrompt(step, "provided");
         stubStep(project, step);
         when(promptRepository.findByStep(step)).thenReturn(Optional.of(prompt));
-        when(promptTemplate.getFormatPrompt()).thenReturn("format");
 
         ProjectStepPromptResponse response = service().getPrompt(
                 userId, projectId, "constraint_analysis");
@@ -123,7 +113,6 @@ class ProjectStepPromptServiceTest {
         ProjectStepPrompt prompt = createPrompt(step, "hello world");
         stubLockedStep(project, step);
         when(promptRepository.findByStep(step)).thenReturn(Optional.of(prompt));
-        when(promptTemplate.getFormatPrompt()).thenReturn("format");
 
         ProjectStepPromptResponse response = service().updatePrompt(
                 userId, projectId, "constraint_analysis", "hello brave world");
@@ -193,7 +182,6 @@ class ProjectStepPromptServiceTest {
         when(stepRepository.findByProjectAndRoadmapStepWithPromptTemplateForUpdate(
                 project, RoadmapStep.ARGUMENT_STRUCTURING)).thenReturn(Optional.of(nextStep));
         when(promptRepository.findByStep(nextStep)).thenReturn(Optional.of(existingPrompt));
-        when(promptTemplate.getFormatPrompt()).thenReturn("format");
 
         ProjectStepPromptResponse response = service().createPrompt(
                 userId, projectId, "argument_structuring");
@@ -206,8 +194,7 @@ class ProjectStepPromptServiceTest {
 
     private ProjectStepPromptService service() {
         return new ProjectStepPromptService(projectValidator, stepRepository, promptRepository,
-                selfCheckRepository, new PromptDiffCalculator(), new PromptVariableResolver(),
-                new StepPromptComposer());
+                selfCheckRepository, new PromptDiffCalculator());
     }
 
     private Project createProject() {

@@ -1,15 +1,12 @@
 package com.example.seedbe.domain.prompt.service;
 
 import com.example.seedbe.domain.project.component.ProjectValidator;
-import com.example.seedbe.domain.project.component.ProjectContext;
 import com.example.seedbe.domain.project.entity.Project;
 import com.example.seedbe.domain.project.entity.ProjectStep;
 import com.example.seedbe.domain.project.enums.RoadmapStep;
 import com.example.seedbe.domain.project.enums.ProjectStepStatus;
 import com.example.seedbe.domain.project.repository.ProjectStepRepository;
 import com.example.seedbe.domain.prompt.component.PromptDiffCalculator;
-import com.example.seedbe.domain.prompt.component.PromptVariableResolver;
-import com.example.seedbe.domain.prompt.component.StepPromptComposer;
 import com.example.seedbe.domain.prompt.dto.ProjectStepPromptResponse;
 import com.example.seedbe.domain.prompt.entity.ProjectStepPrompt;
 import com.example.seedbe.domain.prompt.repository.ProjectStepPromptRepository;
@@ -30,8 +27,6 @@ public class ProjectStepPromptService {
     private final ProjectStepPromptRepository promptRepository;
     private final ProjectStepSelfCheckRepository selfCheckRepository;
     private final PromptDiffCalculator promptDiffCalculator;
-    private final PromptVariableResolver promptVariableResolver;
-    private final StepPromptComposer stepPromptComposer;
 
     @Transactional
     public ProjectStepPromptResponse createPrompt(UUID userId, UUID projectId, String stepCodeStr) {
@@ -46,10 +41,7 @@ public class ProjectStepPromptService {
         }
         validatePreviousStepCompleted(project, step);
 
-        String providedPrompt = ProjectContext.isRawDocument(project.getInitialContext())
-                ? stepPromptComposer.compose(step.getRoadmapStep())
-                : promptVariableResolver.resolve(
-                        step.getPromptTemplate().getActionPrompt(), project.getInitialContext());
+        String providedPrompt = step.getPromptTemplate().getActionPrompt();
         ProjectStepPrompt prompt = ProjectStepPrompt.builder()
                 .step(step)
                 .providedPromptSnapshot(providedPrompt)
