@@ -16,14 +16,22 @@ class GeminiMentorClientTest {
     private final GeminiMentorClient client = new GeminiMentorClient("key", "https://example.com");
 
     @Test
+    @SuppressWarnings("unchecked")
     void reservesEnoughTokensForThinkingAndVisibleAnswer() {
         AiMentorClient.AiMentorContext context = new AiMentorClient.AiMentorContext(
                 "final prompt", "source", "outcome", "focus", "elements", List.of());
 
         Map<String, Object> request = client.buildRequest(context, "question", AiMessageType.CHAT);
 
-        assertThat(request.get("generationConfig"))
-                .isEqualTo(Map.of("maxOutputTokens", 4096));
+        Map<String, Object> generationConfig = (Map<String, Object>) request.get("generationConfig");
+        assertThat(generationConfig)
+                .containsEntry("maxOutputTokens", 4096)
+                .containsEntry("thinkingConfig", Map.of("thinkingLevel", "minimal"));
+        Map<String, Object> responseFormat = (Map<String, Object>) generationConfig.get("responseFormat");
+        Map<String, Object> textFormat = (Map<String, Object>) responseFormat.get("text");
+        assertThat(textFormat)
+                .containsEntry("mimeType", "APPLICATION_JSON")
+                .containsKey("schema");
     }
 
     @Test
@@ -43,12 +51,7 @@ class GeminiMentorClientTest {
                 .contains("현재 질문과 질문에 지정된 출력 조건에 먼저 직접 답한다")
                 .contains("일반 지식과 상세 설명도 제공한다")
                 .contains("제출용 과제 완성본은 대신 쓰지 않고")
-                .contains("### 질문에 대한 답변")
-                .contains("### 다음 질문 가이드")
-                .contains("- 보완할 정보:")
-                .contains("- 이렇게 질문해 보세요:")
-                .contains("- 프롬프트 수정 방향:")
-                .contains("다음 질문 가이드를 답변의 마지막에 둔다")
+                .contains("다음 질문 가이드에는 보완할 정보")
                 .hasSizeLessThan(1_500);
     }
 
@@ -79,7 +82,7 @@ class GeminiMentorClientTest {
         String response = """
                 {
                   "candidates": [{
-                    "content": {"parts": [{"text": "### 질문에 대한 답변\\n핵심 답변\\n\\n### 다음 질문 가이드\\n- 보완할 정보: 적용 대상\\n- 이렇게 질문해 보세요: \\"적용 대상을 어떻게 정하나요?\\"\\n- 프롬프트 수정 방향: 대상과 범위를 명시하세요."}]},
+                    "content": {"parts": [{"text": "{\\"answer\\":\\"핵심 답변\\",\\"missingInformation\\":\\"적용 대상\\",\\"nextQuestion\\":\\"적용 대상을 어떻게 정하나요?\\",\\"promptRevision\\":\\"대상과 범위를 명시하세요.\\"}"}]},
                     "finishReason": "STOP"
                   }],
                   "usageMetadata": {
@@ -115,11 +118,11 @@ class GeminiMentorClientTest {
     }
 
     @Test
-    void rejectsAnswerWithoutRequiredNextQuestionGuide() {
+    void rejectsAnswerWithoutRequiredStructuredFields() {
         String response = """
                 {
                   "candidates": [{
-                    "content": {"parts": [{"text": "형식 없이 끝난 답변"}]},
+                    "content": {"parts": [{"text": "{\\"answer\\":\\"핵심 답변\\"}"}]},
                     "finishReason": "STOP"
                   }]
                 }
@@ -131,11 +134,11 @@ class GeminiMentorClientTest {
     }
 
     @Test
-    void rejectsAnswerWithoutRequiredQuestionAnswerSection() {
+    void rejectsBlankRequiredStructuredField() {
         String response = """
                 {
                   "candidates": [{
-                    "content": {"parts": [{"text": "핵심 답변\\n\\n### 다음 질문 가이드\\n- 보완할 정보: 적용 대상\\n- 이렇게 질문해 보세요: 질문\\n- 프롬프트 수정 방향: 범위를 추가하세요."}]},
+                    "content": {"parts": [{"text": "{\\"answer\\":\\"\\",\\"missingInformation\\":\\"적용 대상\\",\\"nextQuestion\\":\\"질문\\",\\"promptRevision\\":\\"범위를 추가하세요.\\"}"}]},
                     "finishReason": "STOP"
                   }]
                 }
