@@ -31,12 +31,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static com.example.seedbe.domain.aimentor.policy.AiMentorUsagePolicy.MAX_QUESTION_COUNT_PER_DAY;
+import static com.example.seedbe.domain.aimentor.policy.AiMentorUsagePolicy.MAX_QUESTION_COUNT_PER_STEP;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProjectStepAiMentorService {
-    private static final long MAX_QUESTION_COUNT_PER_STEP = 10;
-    private static final long MAX_QUESTION_COUNT_PER_DAY = 40;
     private static final int RECENT_MESSAGE_COUNT = 10;
 
     private final ProjectValidator projectValidator;

@@ -7,7 +7,9 @@ import com.example.seedbe.domain.prompt.entity.PromptTemplate;
 import com.example.seedbe.global.exception.BusinessException;
 import com.example.seedbe.global.exception.ErrorType;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,5 +42,19 @@ class ProjectTest {
         assertThatThrownBy(() -> project.complete(step))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorType").isEqualTo(ErrorType.NOT_LAST_STEP);
+    }
+
+    @Test
+    void repeatedCompletionKeepsInitialCompletionTime() {
+        Project project = Project.builder().title("title").roadmapType(RoadmapType.REPORT)
+                .status(ProjectStatus.COMPLETED).initialContext(Map.of()).build();
+        LocalDateTime initialCompletionTime = LocalDateTime.of(2026, 7, 19, 10, 0);
+        ReflectionTestUtils.setField(project, "completedAt", initialCompletionTime);
+        ProjectStep lastStep = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
+                .roadmapStep(RoadmapStep.REPORT_REVISION).stepOrder(4).build();
+
+        project.complete(lastStep);
+
+        assertThat(project.getCompletedAt()).isEqualTo(initialCompletionTime);
     }
 }

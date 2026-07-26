@@ -1,5 +1,7 @@
 package com.example.seedbe.domain.mentor.service;
 
+import com.example.seedbe.domain.analysis.dto.ProjectDependencyAnalysisResponse;
+import com.example.seedbe.domain.analysis.service.ProjectDependencyAnalysisService;
 import com.example.seedbe.domain.mentor.dto.MentorProjectDetailResponse;
 import com.example.seedbe.domain.mentor.dto.MentorStudentListResponse;
 import com.example.seedbe.domain.mentor.dto.MentorStudentProjectListResponse;
@@ -42,6 +44,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,6 +58,7 @@ class MentorServiceTest {
     @Mock private ProjectStepPromptRepository promptRepository;
     @Mock private ProjectStepResultRepository resultRepository;
     @Mock private ProjectStepSelfCheckRepository selfCheckRepository;
+    @Mock private ProjectDependencyAnalysisService dependencyAnalysisService;
 
     private final UUID mentorId = UUID.randomUUID();
 
@@ -171,10 +175,13 @@ class MentorServiceTest {
         when(resultRepository.findByStepIn(List.of(step))).thenReturn(List.of(result));
         when(selfCheckRepository.findByStepIn(List.of(step))).thenReturn(List.of(selfCheck));
         when(projectReviewRepository.findByProjectAndMentor(project, mentor)).thenReturn(Optional.empty());
+        ProjectDependencyAnalysisResponse dependencyAnalysis = mock(ProjectDependencyAnalysisResponse.class);
+        when(dependencyAnalysisService.findByProject(project)).thenReturn(Optional.of(dependencyAnalysis));
 
         MentorProjectDetailResponse response = service().getProjectDetail(mentorId, project.getProjectId());
 
         assertThat(response.reviewStatus()).isEqualTo(ProjectReviewStatus.REVIEWING);
+        assertThat(response.dependencyAnalysis()).isSameAs(dependencyAnalysis);
         assertThat(response.steps()).singleElement().satisfies(item -> {
             assertThat(item.prompt().providedPromptSnapshot()).isEqualTo("original");
             assertThat(item.prompt().editedPrompt()).isEqualTo("edited");
@@ -243,7 +250,7 @@ class MentorServiceTest {
 
     private MentorService service() {
         return new MentorService(mentorStudentRepository, projectReviewRepository, projectRepository,
-                stepRepository, promptRepository, resultRepository, selfCheckRepository);
+                stepRepository, promptRepository, resultRepository, selfCheckRepository, dependencyAnalysisService);
     }
 
     private User user(UUID userId, String nickname, Role role) {

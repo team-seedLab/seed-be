@@ -87,7 +87,9 @@ public class Project extends BaseTimeEntity {
             throw new BusinessException(ErrorType.NOT_LAST_STEP);
         }
 
-        this.status = ProjectStatus.COMPLETED;
-        this.completedAt = LocalDateTime.now();
+        if (this.status != ProjectStatus.COMPLETED) {
+            this.status = ProjectStatus.COMPLETED;
+            this.completedAt = LocalDateTime.now();
+        }
     }
 }

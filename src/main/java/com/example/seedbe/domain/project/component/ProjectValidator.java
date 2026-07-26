@@ -24,4 +24,15 @@ public class ProjectValidator {
 
         return project;
     }
+
+    public Project getProjectWithOwnershipCheckForUpdate(UUID userId, UUID projectId) {
+        Project project = projectRepository.findByIdWithUserForUpdate(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorType.PROJECT_NOT_FOUND));
+
+        if (!project.getUser().getUserId().equals(userId)) {
+            throw new BusinessException(ErrorType.FORBIDDEN_ACCESS);
+        }
+
+        return project;
+    }
 }
