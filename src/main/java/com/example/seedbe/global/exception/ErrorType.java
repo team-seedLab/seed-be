@@ -34,6 +34,10 @@ public enum ErrorType {
     EMPTY_PDF_TEXT(HttpStatus.BAD_REQUEST, "P011", "PDF에서 분석 가능한 텍스트를 추출하지 못했습니다."),
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "P012", "PDF 파일은 개당 20MB를 초과할 수 없습니다."),
     INVALID_ROADMAP_TEMPLATE(HttpStatus.INTERNAL_SERVER_ERROR, "P013", "로드맵 단계와 프롬프트 템플릿 구성이 올바르지 않습니다."),
+    PROJECT_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "P014", "완료된 프로젝트의 분석 결과만 조회할 수 있습니다."),
+
+    // [Dependency Analysis] AI 활용 과정 분석 관련
+    DEPENDENCY_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "DA001", "프로젝트 분석 결과를 찾을 수 없습니다."),
 
 
     // [AI Prompt] AI 프롬프트 네비게이션 관련

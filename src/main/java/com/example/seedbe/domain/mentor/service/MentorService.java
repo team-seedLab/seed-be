@@ -1,5 +1,7 @@
 package com.example.seedbe.domain.mentor.service;
 
+import com.example.seedbe.domain.analysis.dto.ProjectDependencyAnalysisResponse;
+import com.example.seedbe.domain.analysis.service.ProjectDependencyAnalysisService;
 import com.example.seedbe.domain.mentor.dto.MentorDashboardSummary;
 import com.example.seedbe.domain.mentor.dto.MentorProjectDetailResponse;
 import com.example.seedbe.domain.mentor.dto.MentorProjectStepDetailResponse;
@@ -52,6 +54,7 @@ public class MentorService {
     private final ProjectStepPromptRepository promptRepository;
     private final ProjectStepResultRepository resultRepository;
     private final ProjectStepSelfCheckRepository selfCheckRepository;
+    private final ProjectDependencyAnalysisService dependencyAnalysisService;
 
     @Transactional(readOnly = true)
     public MentorStudentListResponse getStudents(UUID mentorId) {
@@ -135,6 +138,8 @@ public class MentorService {
                         .collect(Collectors.toMap(selfCheck -> selfCheck.getStep().getStepId(), Function.identity()));
         ProjectReview review = projectReviewRepository.findByProjectAndMentor(project, context.assignment().getMentor())
                 .orElse(null);
+        ProjectDependencyAnalysisResponse dependencyAnalysis = dependencyAnalysisService.findByProject(project)
+                .orElse(null);
 
         List<MentorProjectStepDetailResponse> stepResponses = steps.stream()
                 .map(step -> toStepDetail(
@@ -160,7 +165,8 @@ public class MentorService {
                 project.getCreatedAt(),
                 project.getUpdatedAt(),
                 project.getCompletedAt(),
-                stepResponses
+                stepResponses,
+                dependencyAnalysis
         );
     }
 

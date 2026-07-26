@@ -1,5 +1,6 @@
 package com.example.seedbe.domain.mentor.controller;
 
+import com.example.seedbe.domain.analysis.dto.ProjectDependencyAnalysisResponse;
 import com.example.seedbe.domain.mentor.dto.MentorDashboardSummary;
 import com.example.seedbe.domain.mentor.dto.MentorProjectDetailResponse;
 import com.example.seedbe.domain.mentor.dto.MentorStudentListResponse;
@@ -51,13 +52,15 @@ class MentorControllerTest {
 
     @Test
     void routesMentorReadApis() throws Exception {
+        ProjectDependencyAnalysisResponse dependencyAnalysis = new ProjectDependencyAnalysisResponse(
+                UUID.randomUUID(), 50, 20, 25, null, null);
         when(mentorService.getStudents(mentorId)).thenReturn(
                 new MentorStudentListResponse(new MentorDashboardSummary(0, 0, 0), List.of()));
         when(mentorService.getStudentProjects(mentorId, studentId)).thenReturn(
                 new MentorStudentProjectListResponse(studentId, "student", "student@seed.test", null, List.of()));
         when(mentorService.getProjectDetail(mentorId, projectId)).thenReturn(
                 new MentorProjectDetailResponse(projectId, studentId, "student", "title", null, null,
-                        null, null, null, null, null, null, null, null, List.of()));
+                        null, null, null, null, null, null, null, null, List.of(), dependencyAnalysis));
 
         mockMvc.perform(get("/api/mentor/students"))
                 .andExpect(status().isOk())
@@ -68,6 +71,9 @@ class MentorControllerTest {
         mockMvc.perform(get("/api/mentor/projects/{projectId}", projectId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.projectId").value(projectId.toString()))
+                .andExpect(jsonPath("$.data.dependencyAnalysis.initiativeScore").value(50))
+                .andExpect(jsonPath("$.data.dependencyAnalysis.analysisSummary").doesNotExist())
+                .andExpect(jsonPath("$.data.dependencyAnalysis.metrics").doesNotExist())
                 .andExpect(jsonPath("$.data.aiMessages").doesNotExist());
 
         verify(mentorService).getStudents(mentorId);

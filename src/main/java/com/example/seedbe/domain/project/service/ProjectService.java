@@ -1,5 +1,6 @@
 package com.example.seedbe.domain.project.service;
 
+import com.example.seedbe.domain.analysis.service.ProjectDependencyAnalysisService;
 import com.example.seedbe.domain.project.component.ProjectValidator;
 import com.example.seedbe.domain.project.component.ProjectContext;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
@@ -19,6 +20,7 @@ import com.example.seedbe.domain.prompt.entity.PromptTemplate;
 import com.example.seedbe.domain.prompt.repository.PromptTemplateRepository;
 import com.example.seedbe.domain.result.entity.ProjectStepResult;
 import com.example.seedbe.domain.result.repository.ProjectStepResultRepository;
+import com.example.seedbe.domain.selfcheck.entity.ProjectStepSelfCheck;
 import com.example.seedbe.domain.selfcheck.repository.ProjectStepSelfCheckRepository;
 import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.global.exception.BusinessException;
@@ -35,6 +37,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -48,6 +51,7 @@ public class ProjectService {
     private final PromptTemplateRepository templateRepository;
     private final ProjectStepResultRepository resultRepository;
     private final ProjectStepSelfCheckRepository selfCheckRepository;
+    private final ProjectDependencyAnalysisService dependencyAnalysisService;
     private final PdfService pdfService;
     private final TransactionTemplate transactionTemplate;
 
@@ -78,7 +82,6 @@ public class ProjectService {
         List<ProjectStepResponse> stepResponses = steps.stream()
                 .map(ProjectStepResponse::from)
                 .toList();
-
         return ProjectDetailResponse.of(project, progress.currentRoadmapStep(), progress.currentStepOrder(),
                 progress.totalStepCount(), progress.completedStepCount(), progress.progressPercent(), stepResponses);
     }
@@ -190,20 +193,40 @@ public class ProjectService {
 
     @Transactional
     public void completeProject(UUID userId, UUID projectId) {
-        Project project = projectValidator.getProjectWithOwnershipCheck(userId, projectId);
-
-        ProjectStep lastStep = stepRepository.findByProjectAndRoadmapStep(
-                        project, project.getRoadmapType().getLastStep())
-                .orElseThrow(() -> new BusinessException(ErrorType.STEP_NOT_STARTED));
-        ProjectStepResult result = resultRepository.findByStep(lastStep)
-                .orElseThrow(() -> new BusinessException(ErrorType.GENERATED_RESULT_NOT_FOUND));
-        if (result.getContentMarkdown() == null || result.getContentMarkdown().isBlank()) {
+        Project project = projectValidator.getProjectWithOwnershipCheckForUpdate(userId, projectId);
+        List<ProjectStep> steps = stepRepository.findByProjectOrderByStepOrderAsc(project);
+        validateRequiredSteps(project, steps);
+        ProjectStep lastStep = steps.getLast();
+        List<ProjectStepResult> results = resultRepository.findByStepIn(steps);
+        Set<UUID> resultStepIds = results.stream()
+                .filter(result -> result.getContentMarkdown() != null && !result.getContentMarkdown().isBlank())
+                .map(result -> result.getStep().getStepId())
+                .collect(Collectors.toSet());
+        if (steps.stream().anyMatch(step -> !resultStepIds.contains(step.getStepId()))) {
             throw new BusinessException(ErrorType.GENERATED_RESULT_NOT_FOUND);
         }
-        if (!selfCheckRepository.existsByStep(lastStep)) {
+        List<ProjectStepSelfCheck> selfChecks = selfCheckRepository.findByStepIn(steps);
+        Set<UUID> selfCheckedStepIds = selfChecks.stream()
+                .map(selfCheck -> selfCheck.getStep().getStepId())
+                .collect(Collectors.toSet());
+        if (steps.stream().anyMatch(step -> !selfCheckedStepIds.contains(step.getStepId()))) {
             throw new BusinessException(ErrorType.SELF_CHECK_NOT_FOUND);
         }
 
         project.complete(lastStep);
+        dependencyAnalysisService.analyzeAndSave(project, steps);
+    }
+
+    private void validateRequiredSteps(Project project, List<ProjectStep> steps) {
+        List<RoadmapStep> requiredSteps = project.getRoadmapType().getValidSteps();
+        boolean valid = steps.size() == requiredSteps.size()
+                && IntStream.range(0, steps.size()).allMatch(index -> {
+                    ProjectStep step = steps.get(index);
+                    return step.getStepOrder() == index + 1
+                            && step.getRoadmapStep() == requiredSteps.get(index);
+                });
+        if (!valid) {
+            throw new BusinessException(ErrorType.STEP_NOT_STARTED);
+        }
     }
 }

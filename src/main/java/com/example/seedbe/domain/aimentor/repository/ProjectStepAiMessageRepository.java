@@ -2,6 +2,7 @@ package com.example.seedbe.domain.aimentor.repository;
 
 import com.example.seedbe.domain.aimentor.entity.ProjectStepAiMessage;
 import com.example.seedbe.domain.aimentor.enums.AiMessageSender;
+import com.example.seedbe.domain.aimentor.enums.AiMessageType;
 import com.example.seedbe.domain.project.entity.ProjectStep;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,6 +14,11 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ProjectStepAiMessageRepository extends JpaRepository<ProjectStepAiMessage, UUID> {
+    interface AiUsage {
+        long getQuestionCount();
+        long getReaskCount();
+    }
+
     @Query("""
             SELECT message
             FROM ProjectStepAiMessage message
@@ -51,6 +57,27 @@ public interface ProjectStepAiMessageRepository extends JpaRepository<ProjectSte
     );
 
     long countByStepAndSender(ProjectStep step, AiMessageSender sender);
+
+    @Query("""
+            SELECT COUNT(message.aiMessageId) AS questionCount,
+                   COALESCE(SUM(CASE WHEN message.messageType = :reaskType THEN 1 ELSE 0 END), 0) AS reaskCount
+            FROM ProjectStepAiMessage message
+            WHERE message.step IN :steps
+              AND message.sender = :userSender
+              AND EXISTS (
+                  SELECT assistant.aiMessageId
+                  FROM ProjectStepAiMessage assistant
+                  WHERE assistant.step = message.step
+                    AND assistant.turnId = message.turnId
+                    AND assistant.sender = :assistantSender
+              )
+            """)
+    AiUsage aggregateCompletedUserMessages(
+            @Param("steps") List<ProjectStep> steps,
+            @Param("userSender") AiMessageSender userSender,
+            @Param("assistantSender") AiMessageSender assistantSender,
+            @Param("reaskType") AiMessageType reaskType
+    );
 
     @Query(value = """
             SELECT COUNT(*)

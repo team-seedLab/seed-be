@@ -1,5 +1,6 @@
 package com.example.seedbe.domain.project.service;
 
+import com.example.seedbe.domain.analysis.service.ProjectDependencyAnalysisService;
 import com.example.seedbe.domain.project.component.ProjectValidator;
 import com.example.seedbe.domain.project.component.ProjectContext;
 import com.example.seedbe.domain.project.dto.ProjectCreateRequest;
@@ -19,6 +20,7 @@ import com.example.seedbe.domain.prompt.repository.PromptTemplateRepository;
 import com.example.seedbe.domain.result.repository.ProjectStepResultRepository;
 import com.example.seedbe.domain.result.entity.ProjectStepResult;
 import com.example.seedbe.domain.selfcheck.repository.ProjectStepSelfCheckRepository;
+import com.example.seedbe.domain.selfcheck.entity.ProjectStepSelfCheck;
 import com.example.seedbe.domain.user.entity.User;
 import com.example.seedbe.domain.user.enums.Role;
 import com.example.seedbe.global.exception.BusinessException;
@@ -39,8 +41,8 @@ import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -58,6 +60,7 @@ class ProjectServiceTest {
     @Mock private PromptTemplateRepository templateRepository;
     @Mock private ProjectStepResultRepository resultRepository;
     @Mock private ProjectStepSelfCheckRepository selfCheckRepository;
+    @Mock private ProjectDependencyAnalysisService dependencyAnalysisService;
     @Mock private PdfService pdfService;
     @Mock private TransactionTemplate transactionTemplate;
     @Mock private TransactionStatus transactionStatus;
@@ -148,7 +151,6 @@ class ProjectServiceTest {
         step.complete();
         when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
         when(stepRepository.findByProjectOrderByStepOrderAsc(project)).thenReturn(List.of(step));
-
         ProjectDetailResponse response = service().getProjectDetails(userId, projectId);
 
         assertThat(response.steps()).hasSize(1);
@@ -220,17 +222,15 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("마지막 단계 결과물이 비어 있으면 완료할 수 없다.")
+    @DisplayName("필수 단계 중 결과물이 비어 있으면 완료할 수 없다.")
     void completeProjectRejectsEmptyLastResult() {
         UUID userId = UUID.randomUUID();
         UUID projectId = UUID.randomUUID();
         Project project = createProject();
-        ProjectStep lastStep = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
-                .roadmapStep(RoadmapStep.REPORT_REVISION).stepOrder(4).build();
-        when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
-        when(stepRepository.findByProjectAndRoadmapStep(project, RoadmapStep.REPORT_REVISION))
-                .thenReturn(Optional.of(lastStep));
-        when(resultRepository.findByStep(lastStep)).thenReturn(Optional.empty());
+        List<ProjectStep> steps = projectSteps(project);
+        when(projectValidator.getProjectWithOwnershipCheckForUpdate(userId, projectId)).thenReturn(project);
+        when(stepRepository.findByProjectOrderByStepOrderAsc(project)).thenReturn(steps);
+        when(resultRepository.findByStepIn(steps)).thenReturn(resultsFor(steps.subList(0, 3)));
 
         assertThatThrownBy(() -> service().completeProject(userId, projectId))
                 .isInstanceOf(BusinessException.class)
@@ -238,42 +238,56 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("마지막 단계 결과물과 이해 확인이 있으면 프로젝트를 완료한다.")
+    @DisplayName("필수 로드맵 단계가 모두 생성되지 않았으면 완료할 수 없다.")
+    void completeProjectRejectsMissingRequiredStep() {
+        UUID userId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        Project project = createProject();
+        List<ProjectStep> incompleteSteps = projectSteps(project).subList(0, 3);
+        when(projectValidator.getProjectWithOwnershipCheckForUpdate(userId, projectId)).thenReturn(project);
+        when(stepRepository.findByProjectOrderByStepOrderAsc(project)).thenReturn(incompleteSteps);
+
+        assertThatThrownBy(() -> service().completeProject(userId, projectId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorType").isEqualTo(ErrorType.STEP_NOT_STARTED);
+
+        verify(resultRepository, never()).findByStepIn(any());
+    }
+
+    @Test
+    @DisplayName("모든 단계 결과물과 이해 확인이 있으면 분석을 저장하고 프로젝트를 완료한다.")
     void completeProjectWithSavedLastResult() {
         UUID userId = UUID.randomUUID();
         UUID projectId = UUID.randomUUID();
         Project project = createProject();
-        ProjectStep lastStep = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
-                .roadmapStep(RoadmapStep.REPORT_REVISION).stepOrder(4).build();
-        ProjectStepResult result = ProjectStepResult.builder()
-                .step(lastStep).contentMarkdown("# 최종 결과").build();
-        when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
-        when(stepRepository.findByProjectAndRoadmapStep(project, RoadmapStep.REPORT_REVISION))
-                .thenReturn(Optional.of(lastStep));
-        when(resultRepository.findByStep(lastStep)).thenReturn(Optional.of(result));
-        when(selfCheckRepository.existsByStep(lastStep)).thenReturn(true);
+        List<ProjectStep> steps = projectSteps(project);
+        List<ProjectStepResult> results = resultsFor(steps);
+        List<ProjectStepSelfCheck> selfChecks = selfChecksFor(steps);
+        when(projectValidator.getProjectWithOwnershipCheckForUpdate(userId, projectId)).thenReturn(project);
+        when(stepRepository.findByProjectOrderByStepOrderAsc(project)).thenReturn(steps);
+        when(resultRepository.findByStepIn(steps)).thenReturn(results);
+        when(selfCheckRepository.findByStepIn(steps)).thenReturn(selfChecks);
 
         service().completeProject(userId, projectId);
 
         assertThat(project.getStatus()).isEqualTo(ProjectStatus.COMPLETED);
         assertThat(project.getCompletedAt()).isNotNull();
+        verify(dependencyAnalysisService).analyzeAndSave(project, steps);
     }
 
     @Test
-    @DisplayName("마지막 단계 이해 확인이 없으면 프로젝트를 완료할 수 없다.")
+    @DisplayName("필수 단계 중 이해 확인이 없으면 프로젝트를 완료할 수 없다.")
     void completeProjectRejectsMissingSelfCheck() {
         UUID userId = UUID.randomUUID();
         UUID projectId = UUID.randomUUID();
         Project project = createProject();
-        ProjectStep lastStep = ProjectStep.builder().project(project).promptTemplate(mock(PromptTemplate.class))
-                .roadmapStep(RoadmapStep.REPORT_REVISION).stepOrder(4).build();
-        ProjectStepResult result = ProjectStepResult.builder()
-                .step(lastStep).contentMarkdown("# 최종 결과").build();
-        when(projectValidator.getProjectWithOwnershipCheck(userId, projectId)).thenReturn(project);
-        when(stepRepository.findByProjectAndRoadmapStep(project, RoadmapStep.REPORT_REVISION))
-                .thenReturn(Optional.of(lastStep));
-        when(resultRepository.findByStep(lastStep)).thenReturn(Optional.of(result));
-        when(selfCheckRepository.existsByStep(lastStep)).thenReturn(false);
+        List<ProjectStep> steps = projectSteps(project);
+        List<ProjectStepResult> results = resultsFor(steps);
+        List<ProjectStepSelfCheck> selfChecks = selfChecksFor(steps.subList(0, 3));
+        when(projectValidator.getProjectWithOwnershipCheckForUpdate(userId, projectId)).thenReturn(project);
+        when(stepRepository.findByProjectOrderByStepOrderAsc(project)).thenReturn(steps);
+        when(resultRepository.findByStepIn(steps)).thenReturn(results);
+        when(selfCheckRepository.findByStepIn(steps)).thenReturn(selfChecks);
 
         assertThatThrownBy(() -> service().completeProject(userId, projectId))
                 .isInstanceOf(BusinessException.class)
@@ -282,7 +296,7 @@ class ProjectServiceTest {
 
     private ProjectService service() {
         return new ProjectService(projectValidator, projectRepository, stepRepository, templateRepository,
-                resultRepository, selfCheckRepository, pdfService, transactionTemplate);
+                resultRepository, selfCheckRepository, dependencyAnalysisService, pdfService, transactionTemplate);
     }
 
     private Project createProject() {
@@ -297,6 +311,37 @@ class ProjectServiceTest {
                 .roadmapStep(roadmapStep).stepOrder(stepOrder).build();
         step.complete();
         return step;
+    }
+
+    private List<ProjectStep> projectSteps(Project project) {
+        return IntStream.range(0, RoadmapType.REPORT.getValidSteps().size())
+                .mapToObj(index -> {
+                    ProjectStep step = ProjectStep.builder()
+                            .project(project)
+                            .promptTemplate(mock(PromptTemplate.class))
+                            .roadmapStep(RoadmapType.REPORT.getValidSteps().get(index))
+                            .stepOrder(index + 1)
+                            .build();
+                    ReflectionTestUtils.setField(step, "stepId", UUID.randomUUID());
+                    return step;
+                })
+                .toList();
+    }
+
+    private List<ProjectStepResult> resultsFor(List<ProjectStep> steps) {
+        return steps.stream()
+                .map(step -> ProjectStepResult.builder().step(step).contentMarkdown("# 결과물").build())
+                .toList();
+    }
+
+    private List<ProjectStepSelfCheck> selfChecksFor(List<ProjectStep> steps) {
+        return steps.stream()
+                .map(step -> {
+                    ProjectStepSelfCheck selfCheck = mock(ProjectStepSelfCheck.class);
+                    when(selfCheck.getStep()).thenReturn(step);
+                    return selfCheck;
+                })
+                .toList();
     }
 
     private User createUser() {

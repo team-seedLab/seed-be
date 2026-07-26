@@ -1,5 +1,6 @@
 package com.example.seedbe.domain.mentor.dto;
 
+import com.example.seedbe.domain.analysis.dto.ProjectDependencyAnalysisResponse;
 import com.example.seedbe.domain.mentor.enums.ProjectReviewStatus;
 import com.example.seedbe.domain.project.enums.ProjectStatus;
 import com.example.seedbe.domain.project.enums.RoadmapType;
@@ -23,6 +24,7 @@ public record MentorProjectDetailResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         LocalDateTime completedAt,
-        List<MentorProjectStepDetailResponse> steps
+        List<MentorProjectStepDetailResponse> steps,
+        ProjectDependencyAnalysisResponse dependencyAnalysis
 ) {
 }
