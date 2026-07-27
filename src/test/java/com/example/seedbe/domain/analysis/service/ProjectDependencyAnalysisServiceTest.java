@@ -119,8 +119,58 @@ class ProjectDependencyAnalysisServiceTest {
         ProjectDependencyAnalysis analysis = service().analyzeAndSave(project, steps);
 
         assertThat(analysis.getUserEditRatio()).isEqualTo(20);
-        assertThat(analysis.getAiDependencyRatio()).isEqualTo(23);
+        assertThat(analysis.getAiDependencyRatio()).isEqualTo(80);
         assertThat(analysis.getInitiativeScore()).isEqualTo(56);
+    }
+
+    @Test
+    void usesAiMentorDependencyWhenPromptIsFullyEdited() {
+        Project project = project();
+        ProjectStep step = step(project, RoadmapStep.CONSTRAINT_ANALYSIS, 1);
+        List<ProjectStep> steps = List.of(step);
+        ProjectStepPrompt fullyEditedPrompt = ProjectStepPrompt.builder()
+                .step(step)
+                .providedPromptSnapshot("a".repeat(100))
+                .editedPrompt("직접 다시 작성한 프롬프트")
+                .addedCount(100)
+                .build();
+        ProjectStepAiMessageRepository.AiUsage aiUsage = usage(10, 0);
+        when(promptRepository.findByStepIn(steps)).thenReturn(List.of(fullyEditedPrompt));
+        when(aiMessageRepository.aggregateCompletedUserMessages(
+                steps, AiMessageSender.USER, AiMessageSender.ASSISTANT,
+                AiMessageType.REASK_WITH_EDITED_PROMPT)).thenReturn(aiUsage);
+        when(analysisRepository.findByProject(project)).thenReturn(Optional.empty());
+        when(analysisRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProjectDependencyAnalysis analysis = service().analyzeAndSave(project, steps);
+
+        assertThat(analysis.getUserEditRatio()).isEqualTo(100);
+        assertThat(analysis.getAiDependencyRatio()).isEqualTo(50);
+    }
+
+    @Test
+    void setsDependencyToZeroWhenPromptIsFullyEditedWithoutAiUsage() {
+        Project project = project();
+        ProjectStep step = step(project, RoadmapStep.CONSTRAINT_ANALYSIS, 1);
+        List<ProjectStep> steps = List.of(step);
+        ProjectStepPrompt fullyEditedPrompt = ProjectStepPrompt.builder()
+                .step(step)
+                .providedPromptSnapshot("a".repeat(100))
+                .editedPrompt("직접 다시 작성한 프롬프트")
+                .addedCount(100)
+                .build();
+        ProjectStepAiMessageRepository.AiUsage noUsage = usage(0, 0);
+        when(promptRepository.findByStepIn(steps)).thenReturn(List.of(fullyEditedPrompt));
+        when(aiMessageRepository.aggregateCompletedUserMessages(
+                steps, AiMessageSender.USER, AiMessageSender.ASSISTANT,
+                AiMessageType.REASK_WITH_EDITED_PROMPT)).thenReturn(noUsage);
+        when(analysisRepository.findByProject(project)).thenReturn(Optional.empty());
+        when(analysisRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProjectDependencyAnalysis analysis = service().analyzeAndSave(project, steps);
+
+        assertThat(analysis.getUserEditRatio()).isEqualTo(100);
+        assertThat(analysis.getAiDependencyRatio()).isZero();
     }
 
     @Test
@@ -147,7 +197,7 @@ class ProjectDependencyAnalysisServiceTest {
         assertThat(saved).isSameAs(existing);
         assertThat(saved.getInitiativeScore()).isZero();
         assertThat(saved.getUserEditRatio()).isZero();
-        assertThat(saved.getAiDependencyRatio()).isZero();
+        assertThat(saved.getAiDependencyRatio()).isEqualTo(100);
         verify(analysisRepository).save(existing);
     }
 

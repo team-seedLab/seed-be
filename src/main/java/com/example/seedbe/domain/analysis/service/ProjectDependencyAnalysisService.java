@@ -94,7 +94,8 @@ public class ProjectDependencyAnalysisService {
         int userEditRatio = calculateUserEditRatio(prompts);
         long questionCount = aiUsage.getQuestionCount();
         int reaskRatio = percentage(aiUsage.getReaskCount(), questionCount);
-        int aiDependencyRatio = calculateAiDependencyRatio(totalStepCount, questionCount, reaskRatio);
+        int aiDependencyRatio =
+                calculateAiDependencyRatio(userEditRatio, totalStepCount, questionCount, reaskRatio);
         int initiativeScore = calculateInitiativeScore(userEditRatio, questionCount, reaskRatio);
 
         return new AnalysisScores(initiativeScore, userEditRatio, aiDependencyRatio);
@@ -110,14 +111,21 @@ public class ProjectDependencyAnalysisService {
         return percentage(addedCount + removedCount, originalPromptLength);
     }
 
-    // 질문을 많이 쓴 정도와 수정 프롬프트 재질문 비율을 절반씩 반영한다.
-    private int calculateAiDependencyRatio(int totalStepCount, long questionCount, int reaskRatio) {
+    // 제공 프롬프트와 AI 멘토 중 더 강하게 의존한 경로를 최종 의존도로 반영한다.
+    private int calculateAiDependencyRatio(
+            int userEditRatio,
+            int totalStepCount,
+            long questionCount,
+            int reaskRatio
+    ) {
+        int providedPromptDependencyRatio = 100 - userEditRatio;
         int questionUsageRatio = percentage(questionCount,
                 (long) totalStepCount * MAX_QUESTION_COUNT_PER_STEP);
-        return weightedScore(
+        int aiMentorDependencyRatio = weightedScore(
                 questionUsageRatio, DEPENDENCY_USAGE_WEIGHT,
                 reaskRatio, DEPENDENCY_REASK_WEIGHT
         );
+        return Math.max(providedPromptDependencyRatio, aiMentorDependencyRatio);
     }
 
     // 수정 깊이를 중심으로 보고, AI를 썼다면 일반 학습 질문의 비율도 함께 반영한다.
