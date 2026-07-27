@@ -111,21 +111,22 @@ public class ProjectDependencyAnalysisService {
         return percentage(addedCount + removedCount, originalPromptLength);
     }
 
-    // 제공 프롬프트와 AI 멘토 중 더 강하게 의존한 경로를 최종 의존도로 반영한다.
+    // 직접 수정으로 확보한 자율성에서 AI 멘토에 의존한 비율을 제외한다.
     private int calculateAiDependencyRatio(
             int userEditRatio,
             int totalStepCount,
             long questionCount,
             int reaskRatio
     ) {
-        int providedPromptDependencyRatio = 100 - userEditRatio;
         int questionUsageRatio = percentage(questionCount,
                 (long) totalStepCount * MAX_QUESTION_COUNT_PER_STEP);
         int aiMentorDependencyRatio = weightedScore(
                 questionUsageRatio, DEPENDENCY_USAGE_WEIGHT,
                 reaskRatio, DEPENDENCY_REASK_WEIGHT
         );
-        return Math.max(providedPromptDependencyRatio, aiMentorDependencyRatio);
+        return Math.round(
+                100 - userEditRatio * (100 - aiMentorDependencyRatio) / 100.0f
+        );
     }
 
     // 수정 깊이를 중심으로 보고, AI를 썼다면 일반 학습 질문의 비율도 함께 반영한다.

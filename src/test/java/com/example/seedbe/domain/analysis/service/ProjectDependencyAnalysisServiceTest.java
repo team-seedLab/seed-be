@@ -119,7 +119,7 @@ class ProjectDependencyAnalysisServiceTest {
         ProjectDependencyAnalysis analysis = service().analyzeAndSave(project, steps);
 
         assertThat(analysis.getUserEditRatio()).isEqualTo(20);
-        assertThat(analysis.getAiDependencyRatio()).isEqualTo(80);
+        assertThat(analysis.getAiDependencyRatio()).isEqualTo(85);
         assertThat(analysis.getInitiativeScore()).isEqualTo(56);
     }
 
