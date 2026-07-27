@@ -94,7 +94,8 @@ public class ProjectDependencyAnalysisService {
         int userEditRatio = calculateUserEditRatio(prompts);
         long questionCount = aiUsage.getQuestionCount();
         int reaskRatio = percentage(aiUsage.getReaskCount(), questionCount);
-        int aiDependencyRatio = calculateAiDependencyRatio(totalStepCount, questionCount, reaskRatio);
+        int aiDependencyRatio =
+                calculateAiDependencyRatio(userEditRatio, totalStepCount, questionCount, reaskRatio);
         int initiativeScore = calculateInitiativeScore(userEditRatio, questionCount, reaskRatio);
 
         return new AnalysisScores(initiativeScore, userEditRatio, aiDependencyRatio);
@@ -110,13 +111,21 @@ public class ProjectDependencyAnalysisService {
         return percentage(addedCount + removedCount, originalPromptLength);
     }
 
-    // 질문을 많이 쓴 정도와 수정 프롬프트 재질문 비율을 절반씩 반영한다.
-    private int calculateAiDependencyRatio(int totalStepCount, long questionCount, int reaskRatio) {
+    // 직접 수정으로 확보한 자율성에서 AI 멘토에 의존한 비율을 제외한다.
+    private int calculateAiDependencyRatio(
+            int userEditRatio,
+            int totalStepCount,
+            long questionCount,
+            int reaskRatio
+    ) {
         int questionUsageRatio = percentage(questionCount,
                 (long) totalStepCount * MAX_QUESTION_COUNT_PER_STEP);
-        return weightedScore(
+        int aiMentorDependencyRatio = weightedScore(
                 questionUsageRatio, DEPENDENCY_USAGE_WEIGHT,
                 reaskRatio, DEPENDENCY_REASK_WEIGHT
+        );
+        return Math.round(
+                100 - userEditRatio * (100 - aiMentorDependencyRatio) / 100.0f
         );
     }
 
